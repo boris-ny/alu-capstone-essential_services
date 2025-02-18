@@ -3,7 +3,6 @@ import { PrismaClient } from '@prisma/client';
 import * as businessController from './controllers/businessController';
 import * as categoryController from './controllers/categoryController';
 
-const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -13,6 +12,9 @@ app.use(express.json());
 app.get('/health', (req: Request, res: Response) => {
   res.json({ message: 'Server is running' });
 });
+
+//Login route
+app.post('/login', businessController.loginBusiness);
 
 // Business routes
 app.post('/businesses', businessController.createBusiness);

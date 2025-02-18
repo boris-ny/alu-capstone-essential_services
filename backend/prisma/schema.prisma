@@ -9,11 +9,12 @@ generator client {
 
 model Business {
   id            Int      @id @default(autoincrement())
-  businessName  String
+  businessName  String   @unique
+  password      String // added password field
   description   String?
   categoryId    Int
   contactNumber String
-  email         String?
+  email         String?  @unique // added unique constraint to email field
   website       String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
