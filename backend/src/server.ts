@@ -1,12 +1,14 @@
 import express, { Request, Response } from 'express';
+import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import * as businessController from './controllers/businessController';
-import * as categoryController from './controllers/categoryController';
+import * as categoryController from './controllers/categoryConroller';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(cors());
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {
