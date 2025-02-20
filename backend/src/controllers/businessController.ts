@@ -104,3 +104,33 @@ export const loginBusiness = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+export const searchBusinesses = async (req: Request, res: Response) => {
+  try {
+    const { searchTerm, category } = req.query;
+
+    const where: any = {};
+
+    if (searchTerm) {
+      where.businessName = {
+        contains: searchTerm as string,
+        mode: 'insensitive', // For case-insensitive search
+      };
+    }
+
+    if (category && !isNaN(Number(category))) {
+      where.categoryId = {
+        equals: parseInt(category as string),
+      };
+    }
+
+    const businesses = await prisma.business.findMany({
+      where: where,
+    });
+
+    res.json(businesses);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};

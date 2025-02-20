@@ -1,6 +1,5 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
 import * as businessController from './controllers/businessController';
 import * as categoryController from './controllers/categoryConroller';
 
@@ -24,6 +23,7 @@ app.get('/businesses', businessController.getAllBusinesses);
 app.get('/businesses/:id', businessController.getBusinessById);
 app.put('/businesses/:id', businessController.updateBusiness);
 app.delete('/businesses/:id', businessController.deleteBusiness);
+app.get('/businesses/search', businessController.searchBusinesses);
 
 // Category routes
 app.post('/categories', categoryController.createCategory);
