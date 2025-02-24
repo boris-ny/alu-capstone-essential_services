@@ -1,18 +1,39 @@
 import { Search } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Business } from '@/Home';
 
 interface SearchProps {
-  onSearchResults: (results: any[]) => void; // Changed prop name
+  onSearchResults: (results: Business[]) => void;
+}
+
+interface Category {
+  id: number;
+  name: string;
 }
 
 const SearchServices: React.FC<SearchProps> = ({ onSearchResults }) => {
-  // Changed prop name
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Fetch categories from backend
+    axios
+      .get('http://localhost:3000/categories')
+      .then((response) => {
+        setCategories(response.data);
+      })
+      .catch((error) => {
+        console.error('Error fetching categories:', error);
+        alert('Failed to load categories');
+      });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
       const response = await axios.get(
@@ -25,10 +46,12 @@ const SearchServices: React.FC<SearchProps> = ({ onSearchResults }) => {
         }
       );
 
-      onSearchResults(response.data); // Pass the results back up
+      onSearchResults(response.data);
     } catch (error) {
       console.error('Error during search:', error);
       alert('Search failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -46,15 +69,22 @@ const SearchServices: React.FC<SearchProps> = ({ onSearchResults }) => {
         value={category}
         onChange={(e) => setCategory(e.target.value)}>
         <option value="">All Categories</option>
-        <option value="Healthcare">Healthcare</option>
-        <option value="Education">Education</option>
-        {/* Add more categories as needed */}
+        {categories.map((cat) => (
+          <option key={cat.id} value={String(cat.id)}>
+            {cat.name}
+          </option>
+        ))}
       </select>
       <button
         type="submit"
-        className="bg-primary text-white rounded-2xl gap-3 py-3 px-6 flex items-center ml-4">
+        disabled={isLoading}
+        className={`bg-primary text-white rounded-2xl gap-3 py-3 px-6 flex items-center ml-4 ${
+          isLoading ? 'opacity-50 cursor-not-allowed' : ''
+        }`}>
         <Search size={24} />
-        <span className="text-xl">Discover</span>
+        <span className="text-xl">
+          {isLoading ? 'Searching...' : 'Discover'}
+        </span>
       </button>
     </form>
   );

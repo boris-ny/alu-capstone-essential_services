@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "ts-node-dev src/server.ts",
+    "dev": "ts-node-dev --respawn src/server.ts",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev"
   },
@@ -14,13 +14,13 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@prisma/client": "^6.3.1",
+    "@prisma/client": "^6.4.1",
     "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.8",
     "@types/node": "^22.13.4",
-    "prisma": "^6.3.1",
+    "prisma": "^6.4.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.3"
   },

@@ -1,19 +1,19 @@
 import { Header } from './components/header';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './components/ui/button';
 import SearchServices from './components/search';
-import { useState } from 'react';
 
-type Business = {
+export type Business = {
   id: number;
   businessName: string;
+  description?: string;
 };
 export default function Home() {
-  const [searchResults, setSearchResults] = useState<Business[]>([]);
+  const navigate = useNavigate();
 
   const handleSearchResults = (results: Business[]) => {
-    setSearchResults(results);
+    navigate('/search-results', { state: { results } });
   };
-
   return (
     <div className="flex gap-20 overflow-hidden flex-col bg-zinc-100 ">
       <Header />
@@ -42,19 +42,6 @@ export default function Home() {
           See all Categories
         </button>
       </section>
-
-      {searchResults.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-2xl font-bold mb-4">Search Results</h2>
-          <ul>
-            {searchResults.map((business) => (
-              <li key={business.id} className="mb-2">
-                {business.businessName} - {business.description}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <section className="flex flex-col sm:flex-row justify-center items-center gap-28 w-full md:max-w-5xl mx-auto mt-6 my-4">
         <h2 className="text-6xl font-bold">About</h2>

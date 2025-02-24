@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -12,15 +13,27 @@ export const Header = () => {
       <div className="flex justify-between items-center px-20 py-7 max-md:px-5">
         <div className="flex gap-10 text-2xl font-bold text-white max-md:flex-1">
           <div className="px-14 py-1.5 bg-white text-black rounded-3xl max-md:px-5">
-            Home
+            <Link
+              to="/"
+              className="px-14 py-1.5 bg-white text-black rounded-3xl max-md:px-5">
+              Home
+            </Link>
           </div>
           <div className="px-11 py-1.5 bg-white text-black rounded-3xl max-md:px-5">
-            Search
+            <Link
+              to="/search-results"
+              className="px-11 py-1.5 bg-white text-black rounded-3xl max-md:px-5">
+              Search
+            </Link>
           </div>
         </div>
         <div className="hidden md:block">
           <div className="px-8 py-3 text-2xl bg-white font-bold text-black rounded-3xl">
-            Register Business
+            <Link
+              to="/register"
+              className="px-8 py-3 text-2xl bg-white font-bold text-black rounded-3xl">
+              Register Business
+            </Link>
           </div>
         </div>
         <button

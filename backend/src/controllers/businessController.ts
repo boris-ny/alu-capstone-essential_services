@@ -32,11 +32,18 @@ export const getAllBusinesses = async (req: Request, res: Response) => {
   }
 };
 
-export const getBusinessById = async (req: Request, res: Response) => {
+export const getBusinessById = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const id = parseInt(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid business ID' });
+    }
+
     const business = await prisma.business.findUnique({
-      where: { id: parseInt(req.params.id) },
+      where: { id: id },
     });
+
     if (business) {
       res.json(business);
     } else {
@@ -105,7 +112,11 @@ export const loginBusiness = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const searchBusinesses = async (req: Request, res: Response) => {
+export const searchBusinesses = async (
+  req: Request,
+  res: Response,
+  next: NextFunction // Add NextFunction as a parameter
+) => {
   try {
     const { searchTerm, category } = req.query;
 
@@ -114,7 +125,6 @@ export const searchBusinesses = async (req: Request, res: Response) => {
     if (searchTerm) {
       where.businessName = {
         contains: searchTerm as string,
-        mode: 'insensitive', // For case-insensitive search
       };
     }
 

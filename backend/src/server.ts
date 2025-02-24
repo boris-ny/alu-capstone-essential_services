@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import * as businessController from './controllers/businessController';
 import * as categoryController from './controllers/categoryConroller';
@@ -15,12 +15,14 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 //Login route
-app.post('/login', businessController.loginBusiness);
+app.post('/login', (req: Request, res: Response, next: NextFunction) => {
+  businessController.loginBusiness(req, res, next);
+});
 
 // Business routes
 app.post('/businesses', businessController.createBusiness);
 app.get('/businesses', businessController.getAllBusinesses);
-app.get('/businesses/:id', businessController.getBusinessById);
+// app.get('/businesses/:id', businessController.getBusinessById);
 app.put('/businesses/:id', businessController.updateBusiness);
 app.delete('/businesses/:id', businessController.deleteBusiness);
 app.get('/businesses/search', businessController.searchBusinesses);
