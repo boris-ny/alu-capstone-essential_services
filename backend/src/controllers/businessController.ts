@@ -9,16 +9,41 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 export const createBusiness = async (req: Request, res: Response) => {
   try {
     const data = { ...req.body };
+
+    // Check if business with email already exists
+    if (data.email) {
+      const existingBusiness = await prisma.business.findUnique({
+        where: { email: data.email },
+      });
+
+      if (existingBusiness) {
+        return res.status(400).json({
+          message: 'A business with this email already exists'
+        });
+      }
+    }
+
+    // Hash password if provided
     if (data.password) {
       data.password = await bcrypt.hash(data.password, 10);
     }
+
     const business = await prisma.business.create({
       data,
     });
-    res.json(business);
+
+    // Remove password from response
+    const { password, ...businessWithoutPassword } = business;
+    res.status(201).json(businessWithoutPassword);
+
   } catch (error: any) {
-    res.status(500).json({ message: (error as Error).message });
-    console.log(error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        message: `A business with this ${error.meta.target[0]} already exists`
+      });
+    }
+    console.error('Error creating business:', error);
+    res.status(500).json({ message: 'Error creating business' });
   }
 };
 
@@ -115,32 +140,51 @@ export const loginBusiness = async (req: Request, res: Response, next: NextFunct
 export const searchBusinesses = async (
   req: Request,
   res: Response,
-  next: NextFunction // Add NextFunction as a parameter
+  next: NextFunction
 ) => {
   try {
     const { searchTerm, category } = req.query;
-
     const where: any = {};
 
-    if (searchTerm) {
+    // Only add businessName filter if searchTerm is not empty
+    if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim()) {
       where.businessName = {
-        contains: searchTerm as string,
+        contains: searchTerm.trim(),
+        mode: 'insensitive', // Make search case-insensitive
       };
     }
 
+    // Only add category filter if category is a valid number
     if (category && !isNaN(Number(category))) {
-      where.categoryId = {
-        equals: parseInt(category as string),
-      };
+      const categoryId = parseInt(category as string);
+      if (categoryId > 0) { // Ensure category ID is positive
+        where.categoryId = categoryId;
+      }
     }
 
     const businesses = await prisma.business.findMany({
-      where: where,
+      where,
+      select: {
+        id: true,
+        businessName: true,
+        description: true,
+        categoryId: true,
+        contactNumber: true,
+        email: true,
+        website: true,
+        latitude: true,
+        longitude: true,
+        createdAt: true,
+        password: false, // Exclude password from results
+      },
     });
 
-    res.json(businesses);
+    return res.json(businesses);
   } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    console.error('Search error:', error);
+    return res.status(500).json({
+      error: 'An error occurred while searching businesses',
+      details: error.message
+    });
   }
 };

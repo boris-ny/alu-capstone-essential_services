@@ -36,20 +36,29 @@ const SearchServices: React.FC<SearchProps> = ({ onSearchResults }) => {
     setIsLoading(true);
 
     try {
+      // Only include non-empty parameters
+      const params: Record<string, string> = {};
+      if (searchTerm.trim()) {
+        params.searchTerm = searchTerm.trim();
+      }
+      if (category) {
+        params.category = category;
+      }
+
       const response = await axios.get(
         'http://localhost:3000/businesses/search',
-        {
-          params: {
-            searchTerm: searchTerm,
-            category: category,
-          },
-        }
+        { params }
       );
 
       onSearchResults(response.data);
     } catch (error) {
       console.error('Error during search:', error);
-      alert('Search failed');
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || 'Search failed';
+        alert(errorMessage);
+      } else {
+        alert('An unexpected error occurred');
+      }
     } finally {
       setIsLoading(false);
     }

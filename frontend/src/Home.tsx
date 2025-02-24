@@ -7,6 +7,14 @@ export type Business = {
   id: number;
   businessName: string;
   description?: string;
+  categoryId: number;
+  contactNumber: string;
+  latitude?: number;
+  longitude?: number;
+  email?: string;
+  website?: string;
+  createdAt: string;
+  updatedAt: string;
 };
 export default function Home() {
   const navigate = useNavigate();

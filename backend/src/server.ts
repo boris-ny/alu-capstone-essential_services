@@ -20,12 +20,21 @@ app.post('/login', (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Business routes
-app.post('/businesses', businessController.createBusiness);
-app.get('/businesses', businessController.getAllBusinesses);
-// app.get('/businesses/:id', businessController.getBusinessById);
+app.post('/businesses', (req: Request, res: Response, next: NextFunction) => {
+  businessController.createBusiness(req, res);
+});
+app.get('/businesses', (req: Request, res: Response, next: NextFunction) => {
+  businessController.getAllBusinesses(req, res);
+});
+// Move the search route BEFORE the :id route
+app.get('/businesses/search', (req: Request, res: Response, next: NextFunction) => {
+  businessController.searchBusinesses(req, res, next);
+});
+app.get('/businesses/:id', (req: Request, res: Response, next: NextFunction) => {
+  businessController.getBusinessById(req, res, next);
+});
 app.put('/businesses/:id', businessController.updateBusiness);
 app.delete('/businesses/:id', businessController.deleteBusiness);
-app.get('/businesses/search', businessController.searchBusinesses);
 
 // Category routes
 app.post('/categories', categoryController.createCategory);

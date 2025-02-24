@@ -2,6 +2,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import axios from 'axios';
+import { useState } from 'react';
+import LocationPicker from '@/components/LocationPicker';
 
 // Define Zod schema for Register Business form
 const createBusinessSchema = z.object({
@@ -20,6 +22,8 @@ const createBusinessSchema = z.object({
     .min(8, { message: 'Contact Number must be at least 8 digits' }),
   email: z.string().email({ message: 'Invalid email address' }).optional(),
   website: z.string().url({ message: 'Invalid URL' }).optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 // Define Zod schema for Login form
@@ -34,6 +38,14 @@ const loginSchema = z.object({
 
 function Login() {
   // Register Business Form
+  const [location, setLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+
+  const handleLocationSelect = (newLocation: { lat: number; lng: number }) => {
+    setLocation(newLocation);
+  };
   const {
     register: registerCreate,
     handleSubmit: handleSubmitCreate,
@@ -58,6 +70,8 @@ function Login() {
       const response = await axios.post('http://localhost:3000/businesses', {
         ...data,
         categoryId: parseInt(data.categoryId),
+        latitude: location?.lat,
+        longitude: location?.lng,
       });
       console.log('Created business:', response.data);
       alert('Business created successfully!');
@@ -159,7 +173,20 @@ function Login() {
           {createErrors.website && (
             <p className="text-red-500">{createErrors.website.message}</p>
           )}
-
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Business Location
+            </label>
+            <p className="text-sm text-gray-500 mb-2">
+              Click on the map to set your business location
+            </p>
+            <LocationPicker
+              isEditable={true}
+              onLocationSelect={handleLocationSelect}
+              variant="large"
+              className="shadow-lg"
+            />
+          </div>
           <button type="submit" className="bg-green-500 text-white p-2 rounded">
             Register Business
           </button>
