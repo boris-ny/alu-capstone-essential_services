@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Header } from '@/components/header';
@@ -10,6 +11,12 @@ const BusinessDetails = () => {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const getMapsUrl = (lat: number, lng: number) => {
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  };
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   useEffect(() => {
     const fetchBusinessDetails = async () => {
@@ -99,14 +106,50 @@ const BusinessDetails = () => {
 
               <h2 className="text-2xl font-semibold mb-4 mt-6">Location</h2>
               {business.latitude && business.longitude ? (
-                <LocationPicker
-                  initialLocation={{
-                    lat: business.latitude,
-                    lng: business.longitude,
-                  }}
-                  isEditable={false}
-                  variant="default"
-                />
+                <div className="space-y-4">
+                  <LocationPicker
+                    initialLocation={{
+                      lat: business.latitude,
+                      lng: business.longitude,
+                    }}
+                    isEditable={false}
+                    variant="default"
+                  />
+
+                  {/* Mobile Get Directions Button */}
+                  {isMobile && (
+                    <a
+                      href={getMapsUrl(business.latitude, business.longitude)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full bg-blue-500 text-white text-center py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors">
+                      Open in Google Maps
+                    </a>
+                  )}
+
+                  {/* QR Code for Desktop */}
+                  {!isMobile && (
+                    <div className="mt-4 p-4 border rounded-lg bg-white">
+                      <h3 className="text-lg font-medium mb-2">
+                        Get Directions on Your Phone
+                      </h3>
+                      <div className="flex items-center justify-center">
+                        <QRCodeSVG
+                          value={getMapsUrl(
+                            business.latitude,
+                            business.longitude
+                          )}
+                          size={200}
+                          level="H"
+                          includeMargin
+                        />
+                      </div>
+                      <p className="text-sm text-gray-500 text-center mt-2">
+                        Scan this QR code to open the location in Google Maps
+                      </p>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p className="text-gray-600">
                   No location information available

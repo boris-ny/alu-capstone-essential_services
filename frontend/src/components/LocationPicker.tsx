@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react';
-import { GoogleMap, Marker, LoadScript } from '@react-google-maps/api';
+import {
+  AdvancedMarker,
+  APIProvider,
+  Map,
+  Pin,
+} from '@vis.gl/react-google-maps';
 import { cn } from '@/lib/utils';
 
 interface Location {
@@ -57,12 +62,12 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   }, [onLocationSelect]);
 
   const handleMapClick = useCallback(
-    (e: google.maps.MapMouseEvent) => {
-      if (!isEditable || !e.latLng) return;
+    (e: { detail: { latLng: google.maps.LatLng } }) => {
+      if (!isEditable || !e.detail.latLng) return;
 
       const newLocation = {
-        lat: e.latLng.lat(),
-        lng: e.latLng.lng(),
+        lat: e.detail.latLng.lat(),
+        lng: e.detail.latLng.lng(),
       };
 
       setMarker(newLocation);
@@ -78,6 +83,27 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   };
 
   const googleAPI = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const mapId = import.meta.env.VITE_GOOGLE_MAPS_ID;
+
+  if (!googleAPI || !mapId) {
+    return (
+      <div className="text-red-500">
+        {!googleAPI
+          ? 'Google Maps API key is not configured.'
+          : 'Google Maps ID is not configured.'}
+      </div>
+    );
+  }
+
+  const mapOptions = {
+    mapId,
+    disableDefaultUI: !isEditable,
+    zoomControl: true,
+    scrollwheel: true,
+    gestureHandling: 'greedy',
+    minZoom: 3,
+    maxZoom: 20,
+  };
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -97,15 +123,40 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 
       {error && <div className="text-red-500 text-sm">{error}</div>}
 
-      <LoadScript googleMapsApiKey={googleAPI}>
-        <GoogleMap
-          mapContainerClassName={cn(mapStyles[variant], className)}
+      <APIProvider apiKey={googleAPI}>
+        <Map
+          className={cn(mapStyles[variant], className)}
           center={marker}
-          zoom={13}
+          mapId={mapId}
+          disableDefaultUI={!isEditable}
+          defaultZoom={20}
+          zoomControl={true}
+          scrollwheel={true}
+          gestureHandling="default"
+          options={mapOptions}
           onClick={handleMapClick}>
-          <Marker position={marker} />
-        </GoogleMap>
-      </LoadScript>
+          <AdvancedMarker
+            position={marker}
+            draggable={isEditable}
+            onDragEnd={(e) => {
+              if (e.latLng) {
+                const newLocation = {
+                  lat: e.latLng.lat(),
+                  lng: e.latLng.lng(),
+                };
+                setMarker(newLocation);
+                onLocationSelect?.(newLocation);
+              }
+            }}>
+            <Pin
+              background={'#3b82f6'}
+              borderColor={'#1d4ed8'}
+              glyphColor={'#ffffff'}
+              scale={1.2}
+            />
+          </AdvancedMarker>
+        </Map>
+      </APIProvider>
     </div>
   );
 };

@@ -2,31 +2,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import axios from 'axios';
-import { useState } from 'react';
-import LocationPicker from '@/components/LocationPicker';
+import { useNavigate } from 'react-router-dom';
 
-// Define Zod schema for Register Business form
-const createBusinessSchema = z.object({
-  businessName: z
-    .string()
-    .min(3, { message: 'Business Name must be at least 3 characters' }),
-  password: z
-    .string()
-    .min(6, { message: 'Password must be at least 6 characters' }),
-  description: z.string().optional(),
-  categoryId: z.string().refine((val) => !isNaN(parseInt(val)), {
-    message: 'Category ID must be a number',
-  }),
-  contactNumber: z
-    .string()
-    .min(8, { message: 'Contact Number must be at least 8 digits' }),
-  email: z.string().email({ message: 'Invalid email address' }).optional(),
-  website: z.string().url({ message: 'Invalid URL' }).optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-});
-
-// Define Zod schema for Login form
 const loginSchema = z.object({
   businessName: z
     .string()
@@ -37,191 +14,67 @@ const loginSchema = z.object({
 });
 
 function Login() {
-  // Register Business Form
-  const [location, setLocation] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
-
-  const handleLocationSelect = (newLocation: { lat: number; lng: number }) => {
-    setLocation(newLocation);
-  };
+  const navigate = useNavigate();
   const {
-    register: registerCreate,
-    handleSubmit: handleSubmitCreate,
-    formState: { errors: createErrors },
-  } = useForm({
-    resolver: zodResolver(createBusinessSchema),
-  });
-
-  // Login Form
-  const {
-    register: registerLogin,
-    handleSubmit: handleSubmitLogin,
-    formState: { errors: loginErrors },
+    register,
+    handleSubmit,
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
   });
-
-  const handleCreateBusiness = async (
-    data: z.infer<typeof createBusinessSchema>
-  ) => {
-    try {
-      const response = await axios.post('http://localhost:3000/businesses', {
-        ...data,
-        categoryId: parseInt(data.categoryId),
-        latitude: location?.lat,
-        longitude: location?.lng,
-      });
-      console.log('Created business:', response.data);
-      alert('Business created successfully!');
-    } catch (error: unknown) {
-      console.error(error);
-      alert('Error creating business');
-    }
-  };
 
   const handleLogin = async (data: z.infer<typeof loginSchema>) => {
     try {
       const response = await axios.post('http://localhost:3000/login', data);
       if (response.data.token) {
-        console.log('Logged in token:', response.data.token);
-        alert('Login successful!');
-      } else {
-        alert('Invalid credentials');
+        localStorage.setItem('token', response.data.token);
+        navigate('/');
       }
     } catch (error: unknown) {
       console.error(error);
-      alert('Login error');
+      alert('Invalid credentials');
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      {/* Register Business Form */}
-      <div className="mt-8">
-        <h2 className="text-2xl mb-4">Register Business</h2>
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="w-full max-w-md">
+        <h2 className="text-3xl font-bold mb-6">Business Login</h2>
         <form
-          onSubmit={handleSubmitCreate(handleCreateBusiness)}
-          className="flex flex-col space-y-2">
+          onSubmit={handleSubmit(handleLogin)}
+          className="flex flex-col space-y-4">
           <input
             type="text"
             placeholder="Business Name"
-            {...registerCreate('businessName')}
-            className="border p-2"
+            {...register('businessName')}
+            className="border p-2 rounded"
           />
-          {createErrors.businessName && (
-            <p className="text-red-500">{createErrors.businessName.message}</p>
+          {errors.businessName && (
+            <p className="text-red-500">{errors.businessName.message}</p>
           )}
 
           <input
             type="password"
             placeholder="Password"
-            {...registerCreate('password')}
-            className="border p-2"
+            {...register('password')}
+            className="border p-2 rounded"
           />
-          {createErrors.password && (
-            <p className="text-red-500">{createErrors.password.message}</p>
+          {errors.password && (
+            <p className="text-red-500">{errors.password.message}</p>
           )}
 
-          <input
-            type="text"
-            placeholder="Description"
-            {...registerCreate('description')}
-            className="border p-2"
-          />
-          {createErrors.description && (
-            <p className="text-red-500">{createErrors.description.message}</p>
-          )}
-
-          <input
-            type="text"
-            placeholder="Category ID"
-            {...registerCreate('categoryId')}
-            className="border p-2"
-          />
-          {createErrors.categoryId && (
-            <p className="text-red-500">{createErrors.categoryId.message}</p>
-          )}
-
-          <input
-            type="text"
-            placeholder="Contact Number"
-            {...registerCreate('contactNumber')}
-            className="border p-2"
-          />
-          {createErrors.contactNumber && (
-            <p className="text-red-500">{createErrors.contactNumber.message}</p>
-          )}
-
-          <input
-            type="email"
-            placeholder="Email"
-            {...registerCreate('email')}
-            className="border p-2"
-          />
-          {createErrors.email && (
-            <p className="text-red-500">{createErrors.email.message}</p>
-          )}
-
-          <input
-            type="text"
-            placeholder="Website"
-            {...registerCreate('website')}
-            className="border p-2"
-          />
-          {createErrors.website && (
-            <p className="text-red-500">{createErrors.website.message}</p>
-          )}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700">
-              Business Location
-            </label>
-            <p className="text-sm text-gray-500 mb-2">
-              Click on the map to set your business location
-            </p>
-            <LocationPicker
-              isEditable={true}
-              onLocationSelect={handleLocationSelect}
-              variant="large"
-              className="shadow-lg"
-            />
-          </div>
-          <button type="submit" className="bg-green-500 text-white p-2 rounded">
-            Register Business
-          </button>
-        </form>
-      </div>
-
-      {/* Login Form */}
-      <div className="mt-12">
-        <h2 className="text-2xl mb-4">Business Login</h2>
-        <form
-          onSubmit={handleSubmitLogin(handleLogin)}
-          className="flex flex-col space-y-2">
-          <input
-            type="text"
-            placeholder="Business Name"
-            {...registerLogin('businessName')}
-            className="border p-2"
-          />
-          {loginErrors.businessName && (
-            <p className="text-red-500">{loginErrors.businessName.message}</p>
-          )}
-
-          <input
-            type="password"
-            placeholder="Password"
-            {...registerLogin('password')}
-            className="border p-2"
-          />
-          {loginErrors.password && (
-            <p className="text-red-500">{loginErrors.password.message}</p>
-          )}
-
-          <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+          <button
+            type="submit"
+            className="bg-blue-500 text-white p-3 rounded font-medium hover:bg-blue-600 transition-colors">
             Login
           </button>
+
+          <p className="text-center text-gray-600">
+            Don't have an account?{' '}
+            <a href="/register" className="text-blue-500 hover:underline">
+              Register here
+            </a>
+          </p>
         </form>
       </div>
     </div>
