@@ -4,6 +4,7 @@ import {
   APIProvider,
   Map,
   Pin,
+  MapMouseEvent,
 } from '@vis.gl/react-google-maps';
 import { cn } from '@/lib/utils';
 
@@ -62,12 +63,12 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   }, [onLocationSelect]);
 
   const handleMapClick = useCallback(
-    (e: { detail: { latLng: google.maps.LatLng } }) => {
-      if (!isEditable || !e.detail.latLng) return;
+    (event: MapMouseEvent) => {
+      if (!isEditable || !event.detail.latLng) return;
 
       const newLocation = {
-        lat: e.detail.latLng.lat(),
-        lng: e.detail.latLng.lng(),
+        lat: event.detail.latLng.lat,
+        lng: event.detail.latLng.lng,
       };
 
       setMarker(newLocation);
@@ -94,16 +95,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
       </div>
     );
   }
-
-  const mapOptions = {
-    mapId,
-    disableDefaultUI: !isEditable,
-    zoomControl: true,
-    scrollwheel: true,
-    gestureHandling: 'greedy',
-    minZoom: 3,
-    maxZoom: 20,
-  };
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -133,7 +124,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
           zoomControl={true}
           scrollwheel={true}
           gestureHandling="default"
-          options={mapOptions}
           onClick={handleMapClick}>
           <AdvancedMarker
             position={marker}

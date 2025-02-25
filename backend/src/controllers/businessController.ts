@@ -9,41 +9,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 export const createBusiness = async (req: Request, res: Response) => {
   try {
     const data = { ...req.body };
-
-    // Check if business with email already exists
-    if (data.email) {
-      const existingBusiness = await prisma.business.findUnique({
-        where: { email: data.email },
-      });
-
-      if (existingBusiness) {
-        return res.status(400).json({
-          message: 'A business with this email already exists'
-        });
-      }
-    }
-
-    // Hash password if provided
     if (data.password) {
       data.password = await bcrypt.hash(data.password, 10);
     }
-
     const business = await prisma.business.create({
       data,
     });
-
-    // Remove password from response
-    const { password, ...businessWithoutPassword } = business;
-    res.status(201).json(businessWithoutPassword);
-
+    res.json(business);
   } catch (error: any) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({
-        message: `A business with this ${error.meta.target[0]} already exists`
-      });
-    }
-    console.error('Error creating business:', error);
-    res.status(500).json({ message: 'Error creating business' });
+    res.status(500).json({ message: (error as Error).message });
+    console.log(error);
   }
 };
 
@@ -57,18 +32,11 @@ export const getAllBusinesses = async (req: Request, res: Response) => {
   }
 };
 
-export const getBusinessById = async (req: Request, res: Response, next: NextFunction) => {
+export const getBusinessById = async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
-
-    if (isNaN(id)) {
-      return res.status(400).json({ message: 'Invalid business ID' });
-    }
-
     const business = await prisma.business.findUnique({
-      where: { id: id },
+      where: { id: parseInt(req.params.id) },
     });
-
     if (business) {
       res.json(business);
     } else {
@@ -148,10 +116,20 @@ export const searchBusinesses = async (
 
     // Only add businessName filter if searchTerm is not empty
     if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim()) {
-      where.businessName = {
-        contains: searchTerm.trim(),
-        mode: 'insensitive', // Make search case-insensitive
-      };
+      where.OR = [
+        {
+          businessName: {
+            contains: searchTerm.trim(),
+            mode: 'insensitive',
+          }
+        },
+        {
+          description: {
+            contains: searchTerm.trim(),
+            mode: 'insensitive',
+          }
+        }
+      ];
     }
 
     // Only add category filter if category is a valid number
@@ -175,8 +153,14 @@ export const searchBusinesses = async (
         latitude: true,
         longitude: true,
         createdAt: true,
-        password: false, // Exclude password from results
-      },
+        updatedAt: true,
+        category: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
     });
 
     return res.json(businesses);

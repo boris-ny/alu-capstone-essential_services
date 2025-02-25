@@ -5,18 +5,21 @@ import Home from './Home';
 import './App.css';
 import SearchResults from './searchresults';
 import BusinessDetails from './businessdetails';
+import { AuthProvider } from './contexts/AuthContext';
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/search-results" element={<SearchResults />} />
-        <Route path="/business/:id" element={<BusinessDetails />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/search-results" element={<SearchResults />} />
+          <Route path="/business/:id" element={<BusinessDetails />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 };
 

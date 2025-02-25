@@ -30,11 +30,15 @@ app.get('/businesses', (req: Request, res: Response, next: NextFunction) => {
 app.get('/businesses/search', (req: Request, res: Response, next: NextFunction) => {
   businessController.searchBusinesses(req, res, next);
 });
-app.get('/businesses/:id', (req: Request, res: Response, next: NextFunction) => {
-  businessController.getBusinessById(req, res, next);
+app.get('/businesses/:id', (req: Request, res: Response) => {
+  businessController.getBusinessById(req, res);
 });
-app.put('/businesses/:id', businessController.updateBusiness);
-app.delete('/businesses/:id', businessController.deleteBusiness);
+app.put('/businesses/:id', (req: Request, res: Response) => {
+  businessController.updateBusiness(req, res);
+});
+app.delete('/businesses/:id', (req: Request, res: Response) => {
+  businessController.deleteBusiness(req, res);
+});
 
 // Category routes
 app.post('/categories', categoryController.createCategory);
