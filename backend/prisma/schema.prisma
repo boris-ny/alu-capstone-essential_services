@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -10,12 +10,14 @@ generator client {
 model Business {
   id            Int      @id @default(autoincrement())
   businessName  String   @unique
-  password      String // added password field
+  password      String
   description   String?
   categoryId    Int
   contactNumber String
-  email         String?  @unique // added unique constraint to email field
+  email         String?  @unique
   website       String?
+  latitude      Float? // Add this field
+  longitude     Float? // Add this field
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   category      Category @relation(fields: [categoryId], references: [id])
@@ -23,8 +25,6 @@ model Business {
 
 model Category {
   id         Int        @id @default(autoincrement())
-  name       String
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  name       String     @unique
   businesses Business[]
 }

@@ -1,52 +1,77 @@
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import * as businessController from './controllers/businessController';
-import * as categoryController from './controllers/categoryConroller';
+import express, { Request, Response, NextFunction } from "express";
+import cors from "cors";
+import * as businessController from "./controllers/businessController";
+import * as categoryController from "./controllers/categoryConroller";
+import { authMiddleware, ownerMiddleware } from './middleware/auth';
 
+// Create Express app
 const app = express();
-const port = process.env.PORT || 3000;
 
+// Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://your-frontend-domain.vercel.app']
+    : ['http://localhost:5173', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 
 // Health check route
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ message: 'Server is running' });
+app.get("/", (req: Request, res: Response) => {
+  res.json({ message: "Server is running" });
 });
 
-//Login route
-app.post('/login', (req: Request, res: Response, next: NextFunction) => {
+// Login route
+app.post("/login", (req: Request, res: Response, next: NextFunction) => {
   businessController.loginBusiness(req, res, next);
 });
 
 // Business routes
-app.post('/businesses', (req: Request, res: Response, next: NextFunction) => {
+app.post("/businesses", (req: Request, res: Response) => {
   businessController.createBusiness(req, res);
 });
-app.get('/businesses', (req: Request, res: Response, next: NextFunction) => {
+
+app.get("/businesses", (req: Request, res: Response) => {
   businessController.getAllBusinesses(req, res);
 });
-// Move the search route BEFORE the :id route
-app.get('/businesses/search', (req: Request, res: Response, next: NextFunction) => {
+
+// Important: Search route MUST come before the :id route
+app.get("/businesses/search", (req: Request, res: Response, next: NextFunction) => {
   businessController.searchBusinesses(req, res, next);
 });
-app.get('/businesses/:id', (req: Request, res: Response) => {
+
+app.get("/businesses/:id", (req: Request, res: Response) => {
   businessController.getBusinessById(req, res);
 });
-app.put('/businesses/:id', (req: Request, res: Response) => {
-  businessController.updateBusiness(req, res);
-});
-app.delete('/businesses/:id', (req: Request, res: Response) => {
+
+app.put(
+  "/businesses/:id",
+  authMiddleware,
+  ownerMiddleware,
+  (req: Request, res: Response) => {
+    businessController.updateBusiness(req, res);
+  }
+);
+
+app.delete("/businesses/:id", (req: Request, res: Response) => {
   businessController.deleteBusiness(req, res);
 });
 
 // Category routes
-app.post('/categories', categoryController.createCategory);
-app.get('/categories', categoryController.getAllCategories);
-app.get('/categories/:id', categoryController.getCategoryById);
-app.put('/categories/:id', categoryController.updateCategory);
-app.delete('/categories/:id', categoryController.deleteCategory);
+app.post("/categories", categoryController.createCategory);
+app.get("/categories", categoryController.getAllCategories);
+app.get("/categories/:id", categoryController.getCategoryById);
+app.put("/categories/:id", categoryController.updateCategory);
+app.delete("/categories/:id", categoryController.deleteCategory);
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
-});
+// Export for Vercel
+export default app;
+
+// Start server if not in Vercel environment
+if (process.env.NODE_ENV !== 'production') {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`Server listening at http://localhost:${port}`);
+  });
+}

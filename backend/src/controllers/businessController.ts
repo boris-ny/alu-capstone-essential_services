@@ -114,19 +114,19 @@ export const searchBusinesses = async (
     const { searchTerm, category } = req.query;
     const where: any = {};
 
-    // Only add businessName filter if searchTerm is not empty
+    // Only add search filter if searchTerm is not empty
     if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim()) {
       where.OR = [
         {
           businessName: {
             contains: searchTerm.trim(),
-            mode: 'insensitive',
+            mode: 'insensitive', // This will now work with PostgreSQL
           }
         },
         {
           description: {
             contains: searchTerm.trim(),
-            mode: 'insensitive',
+            mode: 'insensitive', // This will now work with PostgreSQL
           }
         }
       ];
@@ -135,7 +135,7 @@ export const searchBusinesses = async (
     // Only add category filter if category is a valid number
     if (category && !isNaN(Number(category))) {
       const categoryId = parseInt(category as string);
-      if (categoryId > 0) { // Ensure category ID is positive
+      if (categoryId > 0) {
         where.categoryId = categoryId;
       }
     }

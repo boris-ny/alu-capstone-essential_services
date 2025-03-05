@@ -66,6 +66,11 @@ export const Header = () => {
           {isAuthenticated ? (
             <>
               <div className="flex items-center gap-3">
+                <Link
+                  to="/profile"
+                  className="text-white hover:bg-indigo-800 px-3 py-2 rounded-lg transition-colors">
+                  My Profile
+                </Link>
                 <Avatar className="h-9 w-9 border-2 border-white">
                   <AvatarFallback className="bg-indigo-700 text-white">
                     {business ? getInitials(business.name) : '??'}
