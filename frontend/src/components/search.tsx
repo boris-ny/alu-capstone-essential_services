@@ -30,8 +30,8 @@ const SearchServices: React.FC<SearchProps> = ({
     setCategoriesLoading(true);
     setCategoriesError(false);
 
-    axios
-      .get('http://localhost:3000/categories')
+    api
+      .get('/categories')
       .then((response) => {
         setCategories(response.data);
         setCategoriesError(false);
