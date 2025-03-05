@@ -10,10 +10,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://alu-capstone-essential-services.vercel.app']
-    : ['http://localhost:5173', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: '*', // Allow all origins (temporary fix)
   credentials: true
 }));
 
