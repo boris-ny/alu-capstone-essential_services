@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Edit,
   Info,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from './services/api';
@@ -27,7 +28,6 @@ import ProfileField from './components/profileField';
 interface Category {
   id: number;
   name: string;
-  // Add any other properties your categories might have
 }
 
 // Create schema for business profile update
@@ -44,6 +44,8 @@ const profileSchema = z.object({
     .min(8, { message: 'Contact Number must be at least 8 digits' }),
   email: z.string().email({ message: 'Invalid email address' }).optional(),
   website: z.string().url({ message: 'Invalid URL' }).optional(),
+  openingHours: z.string().optional(),
+  closingHours: z.string().optional(),
 });
 
 // Type for business profile data
@@ -104,6 +106,8 @@ function BusinessProfile() {
           contactNumber: businessResponse.data.contactNumber,
           email: businessResponse.data.email || '',
           website: businessResponse.data.website || '',
+          openingHours: businessResponse.data.openingHours || '',
+          closingHours: businessResponse.data.closingHours || '',
         });
 
         // Set location if available
@@ -337,7 +341,39 @@ function BusinessProfile() {
                 />
               </ProfileField>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Opening Hours */}
+              <ProfileField
+                label="Opening Hours"
+                icon={<Clock className="h-5 w-5 text-gray-400" />}
+                error={errors.openingHours?.message}
+                optional={true}
+                readOnly={!isEditing}>
+                <input
+                  type="text"
+                  placeholder="e.g., 9:00 AM"
+                  {...register('openingHours')}
+                  disabled={!isEditing}
+                  className={inputClasses(!isEditing, !!errors.openingHours)}
+                />
+              </ProfileField>
 
+              {/* Closing Hours */}
+              <ProfileField
+                label="Closing Hours"
+                icon={<Clock className="h-5 w-5 text-gray-400" />}
+                error={errors.closingHours?.message}
+                optional={true}
+                readOnly={!isEditing}>
+                <input
+                  type="text"
+                  placeholder="e.g., 5:00 PM"
+                  {...register('closingHours')}
+                  disabled={!isEditing}
+                  className={inputClasses(!isEditing, !!errors.closingHours)}
+                />
+              </ProfileField>
+            </div>
             {/* Description - Full width */}
             <div className="mt-6">
               <ProfileField

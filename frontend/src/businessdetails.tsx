@@ -5,6 +5,14 @@ import { Header } from '@/components/header';
 import { Business } from '@/Home';
 import LocationPicker from './components/LocationPicker';
 import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+} from '@/components/ui/drawer';
+import {
   Phone,
   Mail,
   Globe,
@@ -15,10 +23,10 @@ import {
   Smartphone,
   ArrowLeft,
   Building,
-  ChevronRight,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import api from '@/services/api';
+import FeedbackSection from './components/feedback';
 
 const BusinessDetails = () => {
   const { id } = useParams();
@@ -26,7 +34,6 @@ const BusinessDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('about');
-  const [showQRCode, setShowQRCode] = useState(false);
 
   const getMapsUrl = (lat: number, lng: number) => {
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -132,15 +139,6 @@ const BusinessDetails = () => {
       </div>
     );
   }
-
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -358,36 +356,42 @@ const BusinessDetails = () => {
 
                 {/* QR Code for desktop */}
                 {!isMobile && (
-                  <div>
-                    {!showQRCode ? (
-                      <button
-                        onClick={() => setShowQRCode(true)}
-                        className="flex w-full items-center justify-center gap-2 border border-indigo-600 text-indigo-600 py-2 px-4 rounded-lg hover:bg-indigo-50 transition-colors">
+                  <Drawer>
+                    <DrawerTrigger asChild>
+                      <button className="flex w-full items-center justify-center gap-2 border border-indigo-600 text-indigo-600 py-2 px-4 rounded-lg hover:bg-indigo-50 transition-colors">
                         <Smartphone className="w-5 h-5" />
                         <span>Show QR Code for Directions</span>
                       </button>
-                    ) : (
-                      <div className="mt-4 p-4 border rounded-lg bg-gray-50 text-center">
-                        <h4 className="text-gray-700 font-medium mb-3">
+                    </DrawerTrigger>
+                    <DrawerContent className="px-4 pb-6">
+                      <DrawerHeader>
+                        <DrawerTitle className="text-center">
                           Scan with your phone
-                        </h4>
-                        <div className="inline-block p-2 bg-white rounded-lg">
+                        </DrawerTitle>
+                      </DrawerHeader>
+
+                      <div className="flex flex-col items-center justify-center p-4">
+                        <div className="inline-block p-3 bg-white border rounded-lg shadow-sm">
                           <QRCodeSVG
                             value={getMapsUrl(
                               business.latitude,
                               business.longitude
                             )}
-                            size={180}
+                            size={220}
                             level="H"
                             includeMargin
                           />
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-sm text-gray-500 mt-4">
                           Opens location in Google Maps
                         </p>
+
+                        <DrawerClose className="mt-6 px-5 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+                          Close
+                        </DrawerClose>
                       </div>
-                    )}
-                  </div>
+                    </DrawerContent>
+                  </Drawer>
                 )}
               </div>
             ) : (
@@ -401,14 +405,28 @@ const BusinessDetails = () => {
               </div>
             )}
 
-            {/* Business Hours - Placeholder */}
+            {/* Business Hours */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-4">
                 Business Hours
               </h3>
-              <div className="flex items-center text-gray-500">
-                <Clock className="w-5 h-5 mr-2 text-gray-400" />
-                <span>Hours information coming soon</span>
+              <div className="flex items-start">
+                <div className="bg-indigo-100 p-2 rounded-lg mr-4">
+                  <Clock className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  {business.openingHours || business.closingHours ? (
+                    <div>
+                      <p className="text-sm text-gray-500">Hours</p>
+                      <p className="font-medium">
+                        {business.openingHours || 'N/A'} -{' '}
+                        {business.closingHours || 'N/A'}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">Hours not specified</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -428,9 +446,13 @@ const BusinessDetails = () => {
             )}
           </div>
         </div>
+        {/* Feedback Section */}
+        <div className="mt-12">
+          <FeedbackSection businessId={id as string} />
+        </div>
 
         {/* Similar Businesses Section - Future enhancement */}
-        <div className="mt-12">
+        {/* <div className="mt-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800">
               Similar Businesses
@@ -448,7 +470,7 @@ const BusinessDetails = () => {
               Similar business suggestions coming soon...
             </p>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

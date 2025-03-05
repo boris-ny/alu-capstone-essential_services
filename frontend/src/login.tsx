@@ -15,6 +15,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import api from './services/api';
+import { useAuth } from './contexts/useAuth';
+import { jwtDecode } from 'jwt-decode';
 
 const loginSchema = z.object({
   businessName: z
@@ -29,6 +31,7 @@ function Login() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const { updateAuthState } = useAuth();
 
   const {
     register,
@@ -43,9 +46,20 @@ function Login() {
     setLoginError(null);
 
     try {
-      const response = await api.post('/login', data);
+      const response = await api.post('/businesses/login', data);
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
+        const token = response.data.token;
+        localStorage.setItem('token', token);
+
+        // IMPORTANT: Update auth state before navigation
+        try {
+          const decoded = jwtDecode<{ id: number; name: string }>(token);
+          updateAuthState(decoded.id, decoded.name);
+        } catch (decodeError) {
+          console.error('Failed to decode token:', decodeError);
+        }
+
+        // Now navigate after auth state has been updated
         navigate('/');
       }
     } catch (error: unknown) {

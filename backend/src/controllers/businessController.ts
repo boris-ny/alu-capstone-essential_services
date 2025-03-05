@@ -151,6 +151,8 @@ export const searchBusinesses = async (
         contactNumber: true,
         email: true,
         website: true,
+        openingHours: true,
+        closingHours: true,
         latitude: true,
         longitude: true,
         createdAt: true,

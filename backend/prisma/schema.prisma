@@ -8,23 +8,38 @@ generator client {
 }
 
 model Business {
-  id            Int      @id @default(autoincrement())
-  businessName  String   @unique
+  id            Int        @id @default(autoincrement())
+  businessName  String     @unique
   password      String
   description   String?
   categoryId    Int
   contactNumber String
-  email         String?  @unique
+  email         String?    @unique
   website       String?
-  latitude      Float? // Add this field
-  longitude     Float? // Add this field
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  category      Category @relation(fields: [categoryId], references: [id])
+  openingHours  String?
+  closingHours  String?
+  latitude      Float?
+  longitude     Float?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  category      Category   @relation(fields: [categoryId], references: [id])
+  feedback      Feedback[]
 }
 
 model Category {
   id         Int        @id @default(autoincrement())
   name       String     @unique
   businesses Business[]
+}
+
+model Feedback {
+  id         Int @id @default(autoincrement())
+  businessId Int
+  rating     Int
+
+  comment      String?  @db.Text
+  reviewerName String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }

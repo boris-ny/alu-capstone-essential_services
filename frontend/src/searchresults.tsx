@@ -221,6 +221,16 @@ const BusinessCard = ({ business }: { business: Business }) => {
           </div>
         )}
 
+        {(business.openingHours || business.closingHours) && (
+          <div className="flex items-center text-gray-600">
+            <Clock className="h-4 w-4 mr-2 text-gray-400" />
+            <span className="text-sm">
+              {business.openingHours || 'N/A'} -{' '}
+              {business.closingHours || 'N/A'}
+            </span>
+          </div>
+        )}
+
         {business.website && (
           <div className="flex items-center text-gray-600 overflow-hidden">
             <Globe className="h-4 w-4 min-w-[16px] mr-2 text-gray-400" />

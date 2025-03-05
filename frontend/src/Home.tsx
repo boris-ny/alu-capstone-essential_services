@@ -22,6 +22,8 @@ export type Business = {
   categoryId: number;
   contactNumber: string;
   latitude?: number;
+  openingHours?: string;
+  closingHours?: string;
   longitude?: number;
   email?: string;
   website?: string;

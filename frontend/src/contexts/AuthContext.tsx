@@ -26,6 +26,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   business: Business | null;
   logout: () => void;
+  updateAuthState: (id: number, name: string) => void; // Add this function
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(
@@ -37,6 +38,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
+
+  // Add this function to update auth state immediately after login
+  const updateAuthState = (id: number, name: string) => {
+    setIsAuthenticated(true);
+    setBusiness({
+      id: id,
+      name: name,
+    });
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -62,7 +72,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, business, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, business, logout, updateAuthState }}>
       {children}
     </AuthContext.Provider>
   );

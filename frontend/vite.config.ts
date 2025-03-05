@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   // Get API URL from environment variables or default to localhost
-  const apiUrl = env.VITE_API_URL || env.LOCAL_API_URL || 'http://localhost:5173'
+  const apiUrl = env.VITE_API_URL || env.LOCAL_API_URL || 'http://localhost:3000'
 
   console.log(`Using API URL: ${apiUrl}`)
 
@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // Proxy all requests starting with /api to your backend
         '/api': {
-          target: apiUrl,
+          target: "http://localhost:3000",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
           secure: false

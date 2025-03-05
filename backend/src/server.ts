@@ -3,6 +3,7 @@ import cors from "cors";
 import * as businessController from "./controllers/businessController";
 import * as categoryController from "./controllers/categoryConroller";
 import { authMiddleware, ownerMiddleware } from './middleware/auth';
+import * as feedbackController from "./controllers/feedbackController";
 
 // Create Express app
 const app = express();
@@ -20,7 +21,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // Login route
-app.post("/login", (req: Request, res: Response, next: NextFunction) => {
+app.post("/businesses/login", (req: Request, res: Response, next: NextFunction) => {
   businessController.loginBusiness(req, res, next);
 });
 
@@ -62,7 +63,24 @@ app.get("/categories/:id", categoryController.getCategoryById);
 app.put("/categories/:id", categoryController.updateCategory);
 app.delete("/categories/:id", categoryController.deleteCategory);
 
-// Export for Vercel
+// Feedback routes
+app.post("/businesses/:id/feedback", (req: Request, res: Response) => {
+  feedbackController.createFeedback(req, res);
+});
+
+app.get("/businesses/:id/feedback", (req: Request, res: Response) => {
+  feedbackController.getFeedbackForBusiness(req, res);
+});
+
+app.put("/feedback/:id", (req: Request, res: Response) => {
+  feedbackController.updateFeedback(req, res);
+});
+
+app.delete("/feedback/:id", (req: Request, res: Response) => {
+  feedbackController.deleteFeedback(req, res);
+});
+
+
 export default app;
 
 if (process.env.NODE_ENV !== 'production') {

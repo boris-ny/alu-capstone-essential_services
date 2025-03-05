@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  Clock,
 } from 'lucide-react';
 import api from './services/api';
 
@@ -41,6 +42,8 @@ const createBusinessSchema = z.object({
     .min(8, { message: 'Contact Number must be at least 8 digits' }),
   email: z.string().email({ message: 'Invalid email address' }).optional(),
   website: z.string().url({ message: 'Invalid URL' }).optional(),
+  openingHours: z.string().optional(),
+  closingHours: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
 });
@@ -382,6 +385,43 @@ function Register() {
                     )}
                   />
                 </FormField>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    label="Opening Hours"
+                    error={errors.openingHours?.message}
+                    icon={<Clock className="h-5 w-5 text-gray-400" />}
+                    optional={true}>
+                    <input
+                      type="text"
+                      placeholder="e.g., 9:00 AM"
+                      {...register('openingHours')}
+                      className={cn(
+                        'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
+                        errors.openingHours
+                          ? 'border-red-300 focus:ring-red-200'
+                          : 'border-gray-300 focus:ring-indigo-200 focus:border-indigo-400'
+                      )}
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Closing Hours"
+                    error={errors.closingHours?.message}
+                    icon={<Clock className="h-5 w-5 text-gray-400" />}
+                    optional={true}>
+                    <input
+                      type="text"
+                      placeholder="e.g., 5:00 PM"
+                      {...register('closingHours')}
+                      className={cn(
+                        'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
+                        errors.closingHours
+                          ? 'border-red-300 focus:ring-red-200'
+                          : 'border-gray-300 focus:ring-indigo-200 focus:border-indigo-400'
+                      )}
+                    />
+                  </FormField>
+                </div>
               </div>
             )}
 
