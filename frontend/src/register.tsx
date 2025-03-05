@@ -97,12 +97,14 @@ function Register() {
   }, []);
 
   const nextStep = async () => {
-    const fieldsToValidate =
+    // To this (using type assertion):
+    const fieldsToValidate = (
       currentStep === 1
         ? ['businessName', 'password', 'categoryId']
         : currentStep === 2
           ? ['contactNumber', 'email', 'website']
-          : ['description'];
+          : ['description']
+    ) as Array<keyof BusinessFormData>;
 
     const result = await trigger(fieldsToValidate);
     if (result) {
@@ -547,12 +549,16 @@ const FormField = ({
   );
 };
 
-// Missing ChevronDown component
-const ChevronDown = (props) => (
+// ChevronDown component with className support
+const ChevronDown = ({
+  className,
+  ...props
+}: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 20 20"
     fill="currentColor"
+    className={cn(className)}
     {...props}>
     <path
       fillRule="evenodd"

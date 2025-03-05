@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from './services/api';
+import ProfileField from './components/profileField';
 
 interface Category {
   id: number;
@@ -52,7 +53,7 @@ type ProfileFormData = z.infer<typeof profileSchema> & {
 };
 
 function BusinessProfile() {
-  const { business, isAuthenticated } = useAuth();
+  const { business } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -69,7 +70,6 @@ function BusinessProfile() {
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
   });
@@ -430,47 +430,6 @@ function BusinessProfile() {
   );
 }
 
-// Profile Field Component
-function ProfileField({
-  label,
-  icon,
-  error,
-  children,
-  optional = false,
-  readOnly = false,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  error?: string;
-  children: React.ReactNode;
-  optional?: boolean;
-  readOnly?: boolean;
-}) {
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between">
-        <label className="block text-sm font-medium text-gray-700">
-          {label}
-        </label>
-        {optional && <span className="text-xs text-gray-500">Optional</span>}
-      </div>
-
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          {icon}
-        </div>
-        {children}
-      </div>
-
-      {error && (
-        <div className="flex items-center text-sm text-red-500 mt-1">
-          <span>{error}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Helper function for input classes
 function inputClasses(readOnly: boolean, hasError: boolean) {
   return cn(
@@ -487,12 +446,16 @@ function inputClasses(readOnly: boolean, hasError: boolean) {
 }
 
 // ChevronDown icon component
-function ChevronDown(props: unknown) {
+function ChevronDown({
+  className,
+  ...props
+}: { className?: string } & React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 20 20"
       fill="currentColor"
+      className={className}
       {...props}>
       <path
         fillRule="evenodd"
