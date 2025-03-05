@@ -4,11 +4,11 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
+    "vercel-build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn src/server.ts",
     "prisma:generate": "npx prisma generate",
-    "prisma:migrate": "npx prisma migrate dev",
-    "vercel-build": "prisma generate && tsc"
+    "prisma:migrate": "npx prisma migrate dev"
   },
   "keywords": [],
   "author": "",
