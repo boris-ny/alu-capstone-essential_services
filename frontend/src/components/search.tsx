@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Business } from '@/Home';
 import { cn } from '@/lib/utils';
+import api from '@/services/api';
 
 interface SearchProps {
   onSearchResults: (results: Business[]) => void;
@@ -61,10 +62,7 @@ const SearchServices: React.FC<SearchProps> = ({
         params.category = category;
       }
 
-      const response = await axios.get(
-        'http://localhost:3000/businesses/search',
-        { params }
-      );
+      const response = await api.get('/businesses/search', { params });
 
       onSearchResults(response.data);
     } catch (error) {

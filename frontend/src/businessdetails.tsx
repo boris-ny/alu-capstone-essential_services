@@ -1,7 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Header } from '@/components/header';
 import { Business } from '@/Home';
 import LocationPicker from './components/LocationPicker';
@@ -19,6 +18,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import api from '@/services/api';
 
 const BusinessDetails = () => {
   const { id } = useParams();
@@ -55,9 +55,7 @@ const BusinessDetails = () => {
   useEffect(() => {
     const fetchBusinessDetails = async () => {
       try {
-        const response = await axios.get(
-          `http://localhost:3000/businesses/${id}`
-        );
+        const response = await api.get(`/businesses/${id}`);
         setBusiness(response.data);
       } catch (error) {
         console.error('Error fetching business details:', error);

@@ -66,8 +66,6 @@ export default function Home() {
 
   const handleCategoryClick = (category: string) => {
     setActiveCategory(category);
-    // You could also navigate to search results filtered by category
-    // navigate('/search-results', { state: { category } });
   };
 
   return (

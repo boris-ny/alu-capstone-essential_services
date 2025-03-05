@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import axios from 'axios';
+
 import { useEffect, useState } from 'react';
 import LocationPicker from '@/components/LocationPicker';
 import { useNavigate, Link } from 'react-router-dom';
@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Info,
 } from 'lucide-react';
+import api from './services/api';
 
 // Define Zod schema for Register Business form
 const createBusinessSchema = z.object({
@@ -77,12 +78,11 @@ function Register() {
     setLocation(newLocation);
   };
 
-  // Add useEffect to fetch categories when component mounts
   useEffect(() => {
     const fetchCategories = async () => {
       setCategoriesLoading(true);
       try {
-        const response = await axios.get('http://localhost:3000/categories');
+        const response = await api.get('/categories');
         setCategories(response.data);
         setCategoriesError('');
       } catch (error) {
@@ -144,15 +144,12 @@ function Register() {
   const handleSubmitForm = async (data: BusinessFormData): Promise<void> => {
     setIsSubmitting(true);
     try {
-      const response = await axios.post<BusinessResponse>(
-        'http://localhost:3000/businesses',
-        {
-          ...data,
-          categoryId: parseInt(data.categoryId),
-          latitude: location?.lat,
-          longitude: location?.lng,
-        }
-      );
+      const response = await api.post<BusinessResponse>('/businesses', {
+        ...data,
+        categoryId: parseInt(data.categoryId),
+        latitude: location?.lat,
+        longitude: location?.lng,
+      });
       console.log('Created business:', response.data);
       alert('Business created successfully!');
       navigate('/login');
@@ -181,7 +178,7 @@ function Register() {
     // Now manually handle submission
     setIsSubmitting(true);
     try {
-      const response = await axios.post('http://localhost:3000/businesses', {
+      const response = await api.post('/businesses', {
         ...formData,
         categoryId: parseInt(formData.categoryId),
         latitude: location.lat,

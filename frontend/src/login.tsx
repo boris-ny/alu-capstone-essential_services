@@ -14,6 +14,7 @@ import {
   LogIn,
   ArrowRight,
 } from 'lucide-react';
+import api from './services/api';
 
 const loginSchema = z.object({
   businessName: z
@@ -42,7 +43,7 @@ function Login() {
     setLoginError(null);
 
     try {
-      const response = await axios.post('http://localhost:3000/login', data);
+      const response = await api.post('/login', data);
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         navigate('/');

@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import axios from 'axios';
 import { Header } from '@/components/header';
 import { useAuth } from '@/contexts/useAuth';
 import LocationPicker from '@/components/LocationPicker';
@@ -22,6 +21,13 @@ import {
   Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import api from './services/api';
+
+interface Category {
+  id: number;
+  name: string;
+  // Add any other properties your categories might have
+}
 
 // Create schema for business profile update
 const profileSchema = z.object({
@@ -52,7 +58,7 @@ function BusinessProfile() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [profileData, setProfileData] = useState<ProfileFormData | null>(null);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null
   );
@@ -80,17 +86,12 @@ function BusinessProfile() {
         }
 
         // Fetch business details
-        const businessResponse = await axios.get(
-          `http://localhost:3000/businesses/${business.id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const businessResponse = await api.get(`/businesses/${business.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
         // Fetch categories for dropdown
-        const categoriesResponse = await axios.get(
-          'http://localhost:3000/categories'
-        );
+        const categoriesResponse = await api.get('/categories');
 
         setProfileData(businessResponse.data);
         setCategories(categoriesResponse.data);
@@ -138,8 +139,8 @@ function BusinessProfile() {
         throw new Error('Authentication required');
       }
 
-      const response = await axios.put(
-        `http://localhost:3000/businesses/${business.id}`,
+      const response = await api.put(
+        `/businesses/${business.id}`,
         {
           ...data,
           categoryId: parseInt(data.categoryId),
@@ -486,7 +487,7 @@ function inputClasses(readOnly: boolean, hasError: boolean) {
 }
 
 // ChevronDown icon component
-function ChevronDown(props) {
+function ChevronDown(props: unknown) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

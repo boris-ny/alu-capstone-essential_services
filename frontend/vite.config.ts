@@ -5,13 +5,31 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // const env = loadEnv(mode, process.cwd(), '')
+  // Load environment variables based on mode (development, production)
+  const env = loadEnv(mode, process.cwd(), '')
+
+  // Get API URL from environment variables or default to localhost
+  const apiUrl = env.VITE_API_URL || env.LOCAL_API_URL || 'http://localhost:5173'
+
+  console.log(`Using API URL: ${apiUrl}`)
+
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
+    },
+    server: {
+      proxy: {
+        // Proxy all requests starting with /api to your backend
+        '/api': {
+          target: apiUrl,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+          secure: false
+        }
+      }
     }
   }
 })
