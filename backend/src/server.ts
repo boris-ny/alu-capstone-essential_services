@@ -68,10 +68,9 @@ app.delete("/categories/:id", categoryController.deleteCategory);
 // Export for Vercel
 export default app;
 
-// Start server if not in Vercel environment
 if (process.env.NODE_ENV !== 'production') {
-  const port = process.env.PORT || 3000;
-  app.listen(port, () => {
-    console.log(`Server listening at http://localhost:${port}`);
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server listening at http://localhost:${PORT}`);
   });
 }
