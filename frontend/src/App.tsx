@@ -8,6 +8,7 @@ import BusinessDetails from './businessdetails';
 import { AuthProvider } from './contexts/AuthContext';
 import BusinessProfile from './Profile';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import Categories from './Categories';
 
 const App: React.FC = () => {
   return (
@@ -17,6 +18,7 @@ const App: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/categories" element={<Categories />} />
           <Route path="/search-results" element={<SearchResults />} />
           <Route path="/business/:id" element={<BusinessDetails />} />
           {/* Add the profile route with protection */}

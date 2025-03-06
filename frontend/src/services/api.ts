@@ -1,19 +1,24 @@
 import axios from "axios";
 
+const localUrl = import.meta.env.LOCAL_API_URL as string
+
 // Determine the API base URL based on environment
 const getBaseUrl = () => {
-  // For local development, use the Vite proxy
-  if (import.meta.env.DEV) {
-    return '/api';  // This matches your proxy configuration in vite.config.ts
+  // For local development
+  if (import.meta.env.NODE_ENV === 'development') {
+    return localUrl
   }
 
-  // For production, use your deployed backend URL
-  return import.meta.env.VITE_API_URL as string;
+  // For production, use the deployed backend URL or fall back to a default
+  return import.meta.env.VITE_API_URL;
 };
 
 // Create an axios instance with the appropriate base URL
 const api = axios.create({
   baseURL: getBaseUrl(),
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Request interceptor to add auth token

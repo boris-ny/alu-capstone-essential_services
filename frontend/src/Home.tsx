@@ -212,7 +212,6 @@ export default function Home() {
             </Button>
             <Button
               size="lg"
-              variant="outline"
               className="border-white text-white hover:bg-white/10"
               onClick={() => navigate('/register')}>
               Register Your Business
