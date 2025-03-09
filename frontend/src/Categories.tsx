@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Header } from './components/header';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import SearchServices from './components/search';
 import { Button } from './components/ui/button';
 import { cn } from './lib/utils';
@@ -16,6 +16,7 @@ interface Category {
 
 export default function Categories() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -29,6 +30,19 @@ export default function Categories() {
       try {
         const response = await api.get('/categories');
         setCategories(response.data);
+
+        // Check if a category was passed from the home page
+        if (location.state?.selectedCategoryName) {
+          const categoryName = location.state.selectedCategoryName;
+          const matchedCategory = response.data.find(
+            (cat: Category) => cat.name === categoryName
+          );
+
+          if (matchedCategory) {
+            // Auto-select the category and fetch its businesses
+            handleCategoryClick(matchedCategory.id);
+          }
+        }
       } catch (error) {
         console.error('Error fetching categories:', error);
       } finally {
@@ -37,7 +51,7 @@ export default function Categories() {
     };
 
     fetchCategories();
-  }, []);
+  }, [location.state]);
 
   // Handle search results
   const handleSearchResults = (results: Business[]) => {

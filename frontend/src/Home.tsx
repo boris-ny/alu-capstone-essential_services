@@ -68,6 +68,8 @@ export default function Home() {
 
   const handleCategoryClick = (category: string) => {
     setActiveCategory(category);
+    // Navigate to Categories page with the selected category name
+    navigate('/categories', { state: { selectedCategoryName: category } });
   };
 
   return (
