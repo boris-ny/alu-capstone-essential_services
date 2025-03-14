@@ -16,7 +16,11 @@ import {
 } from 'lucide-react';
 
 export type Business = {
+  reviews: boolean;
+  regularHours: boolean;
+  priceLevel: string;
   id: number;
+  placeId: string;
   businessName: string;
   description?: string;
   categoryId: number;

@@ -23,6 +23,7 @@ import {
   Smartphone,
   ArrowLeft,
   Building,
+  DollarSign,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import api from '@/services/api';
@@ -62,8 +63,17 @@ const BusinessDetails = () => {
   useEffect(() => {
     const fetchBusinessDetails = async () => {
       try {
-        const response = await api.get(`/businesses/${id}`);
-        setBusiness(response.data);
+        // Check if this is a Google Place ID
+        if (id?.startsWith('place_')) {
+          const placeId = id.replace('place_', '');
+          const response = await api.get(`/places/${placeId}`);
+          setBusiness(response.data);
+        } else if (id) {
+          const response = await api.get(`/businesses/${id}`);
+          setBusiness(response.data);
+        } else {
+          setError('Invalid ID provided');
+        }
       } catch (error) {
         console.error('Error fetching business details:', error);
         setError('Failed to load business details');
@@ -410,24 +420,42 @@ const BusinessDetails = () => {
               <h3 className="text-lg font-bold text-gray-800 mb-4">
                 Business Hours
               </h3>
-              <div className="flex items-start">
-                <div className="bg-indigo-100 p-2 rounded-lg mr-4">
-                  <Clock className="w-5 h-5 text-indigo-600" />
+
+              {/* Only show this section if regularHours is NOT available */}
+              {(!Array.isArray(business.regularHours) ||
+                business.regularHours.length === 0) && (
+                <div className="flex items-start">
+                  <div className="bg-indigo-100 p-2 rounded-lg mr-4">
+                    <Clock className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    {business.openingHours || business.closingHours ? (
+                      <div>
+                        <p className="text-sm text-gray-500">Hours</p>
+                        <p className="font-medium">
+                          {business.openingHours || 'N/A'} -{' '}
+                          {business.closingHours || 'N/A'}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">Hours not specified</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  {business.openingHours || business.closingHours ? (
-                    <div>
-                      <p className="text-sm text-gray-500">Hours</p>
-                      <p className="font-medium">
-                        {business.openingHours || 'N/A'} -{' '}
-                        {business.closingHours || 'N/A'}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-gray-500">Hours not specified</p>
-                  )}
-                </div>
-              </div>
+              )}
+
+              {/* Show detailed hours if available */}
+              {Array.isArray(business.regularHours) &&
+                business.regularHours.length > 0 && (
+                  <div className="space-y-2">
+                    {business.regularHours.map((hours, index) => (
+                      <div key={index} className="flex">
+                        <Clock className="w-4 h-4 text-indigo-500 mr-2 mt-1" />
+                        <span>{hours}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
             </div>
 
             {/* Business Category */}
@@ -448,29 +476,33 @@ const BusinessDetails = () => {
         </div>
         {/* Feedback Section */}
         <div className="mt-12">
-          <FeedbackSection businessId={id as string} />
+          <FeedbackSection
+            businessId={id as string}
+            googleReviews={business.reviews || []}
+          />
         </div>
 
-        {/* Similar Businesses Section - Future enhancement */}
-        {/* <div className="mt-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Similar Businesses
-            </h2>
-            <Link
-              to="/search-results"
-              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center">
-              View all
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Link>
+        {/* Price Level */}
+        {business.priceLevel && (
+          <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
+              Price Level
+            </h3>
+            <div className="flex items-center">
+              {Array.from({ length: business.priceLevel }).map((_, i) => (
+                <DollarSign key={i} className="w-5 h-5 text-green-600" />
+              ))}
+              {Array.from({ length: 4 - (business.priceLevel || 0) }).map(
+                (_, i) => (
+                  <DollarSign
+                    key={i + business.priceLevel}
+                    className="w-5 h-5 text-gray-300"
+                  />
+                )
+              )}
+            </div>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <p className="text-gray-500">
-              Similar business suggestions coming soon...
-            </p>
-          </div>
-        </div> */}
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 import { Search, Loader2, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Business } from '@/Home';
 import { cn } from '@/lib/utils';
 import api from '@/services/api';
@@ -25,6 +24,11 @@ const SearchServices: React.FC<SearchProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setCategoriesLoading(true);
@@ -51,29 +55,72 @@ const SearchServices: React.FC<SearchProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    handleSearch();
+  };
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    // Clear previous timeout
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    // Set a new timeout to fetch suggestions after user stops typing
+    const timeout = setTimeout(() => {
+      if (value.length > 2) {
+        fetchSuggestions(value);
+      } else {
+        setSuggestions([]);
+      }
+    }, 500);
+
+    setTypingTimeout(timeout);
+  };
+
+  const fetchSuggestions = async (input: string) => {
+    try {
+      const response = await api.get('/places/suggestions', {
+        params: {
+          input,
+          location: '-1.9441,30.0619', // Kigali coordinates
+        },
+      });
+      setSuggestions(response.data);
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setSuggestions([]);
+    }
+  };
+
+  const handleSearch = async () => {
     setIsLoading(true);
+    setError('');
 
     try {
+      console.log('Searching with term:', searchTerm);
+
       const params: Record<string, string> = {};
-      if (searchTerm.trim()) {
-        params.searchTerm = searchTerm.trim();
-      }
-      if (category) {
-        params.category = category;
-      }
+      if (searchTerm) params.searchTerm = searchTerm;
+      if (category) params.category = category;
+
+      console.log('Search params:', params);
 
       const response = await api.get('/businesses/search', { params });
 
-      onSearchResults(response.data);
-    } catch (error) {
-      console.error('Error during search:', error);
-      if (axios.isAxiosError(error)) {
-        const errorMessage = error.response?.data?.error || 'Search failed';
-        // Replace alert with toast notification in a real implementation
-        alert(errorMessage);
+      console.log('Search results:', response.data);
+
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        onSearchResults(response.data);
       } else {
-        alert('An unexpected error occurred');
+        console.log('No results found');
+        onSearchResults([]);
+        setError('No businesses found matching your criteria.');
       }
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('An error occurred while searching. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +140,7 @@ const SearchServices: React.FC<SearchProps> = ({
             type="text"
             placeholder="Search for services..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchInputChange}
             className={cn(
               'w-full pl-11 pr-10 py-3 bg-white rounded-xl border border-gray-300',
               'text-gray-900 placeholder-gray-400',

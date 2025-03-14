@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { Star, Send, Loader, AlertTriangle, MessageSquare } from 'lucide-react';
 import api from '@/services/api';
@@ -13,11 +14,23 @@ interface Feedback {
   createdAt: string;
 }
 
-interface FeedbackSectionProps {
-  businessId: number | string;
+// Add interface for Google Places reviews
+interface PlaceReview {
+  author: string;
+  rating: number;
+  text: string;
+  time: string;
 }
 
-const FeedbackSection: React.FC<FeedbackSectionProps> = ({ businessId }) => {
+interface FeedbackSectionProps {
+  businessId: number | string;
+  googleReviews?: PlaceReview[]; // Pass Google reviews from the parent component
+}
+
+const FeedbackSection: React.FC<FeedbackSectionProps> = ({
+  businessId,
+  googleReviews = [],
+}) => {
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [avgRating, setAvgRating] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
@@ -41,10 +54,44 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ businessId }) => {
   const fetchFeedback = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/businesses/${businessId}/feedback`);
-      setFeedback(response.data.feedback);
-      setAvgRating(response.data.meta.avgRating);
-      setError('');
+
+      // For Google Places, don't fetch from API since we already have the reviews
+      if (typeof businessId === 'string' && businessId.startsWith('place_')) {
+        // For Google Places, we already have the reviews in the googleReviews prop
+        setFeedback([]); // No additional feedback from our system for Google Places
+
+        // Calculate average rating from Google reviews only
+        if (googleReviews.length > 0) {
+          const totalRatingSum = googleReviews.reduce(
+            (sum, item) => sum + item.rating,
+            0
+          );
+          setAvgRating(totalRatingSum / googleReviews.length);
+        } else {
+          setAvgRating(0);
+        }
+
+        setError('');
+      } else {
+        // For our own businesses, fetch from the API
+        const endpoint = `/businesses/${businessId}/feedback`;
+        const response = await api.get(endpoint);
+        setFeedback(response.data.feedback || []);
+
+        // Calculate average rating including Google reviews
+        const totalRatings = [
+          ...(response.data.feedback || []),
+          ...googleReviews,
+        ];
+        const totalRatingSum = totalRatings.reduce(
+          (sum, item) => sum + item.rating,
+          0
+        );
+        const avgRating =
+          totalRatings.length > 0 ? totalRatingSum / totalRatings.length : 0;
+
+        setAvgRating(avgRating);
+      }
     } catch (err) {
       console.error('Error fetching feedback:', err);
       setError('Failed to load reviews. Please try again later.');
@@ -103,6 +150,25 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ businessId }) => {
     }
   };
 
+  // Convert Google reviews to match the format expected by our rendering code
+  const convertedGoogleReviews = googleReviews.map((review, index) => ({
+    id: `google-${index}`, // Use a prefix to avoid conflicts with internal IDs
+    businessId: typeof businessId === 'string' ? 0 : businessId,
+    rating: review.rating,
+    comment: review.text,
+    reviewerName: review.author,
+    createdAt: review.time,
+    isGoogleReview: true, // Add a flag to identify the source
+  }));
+
+  // Combine both sources of reviews
+  const allReviews = [...feedback, ...convertedGoogleReviews];
+
+  // Sort reviews by date (most recent first)
+  const sortedReviews = allReviews.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -111,7 +177,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ businessId }) => {
         </h2>
 
         <div className="flex items-center">
-          {!loading && feedback.length > 0 && (
+          {!loading && sortedReviews.length > 0 && (
             <div className="flex items-center mr-4">
               <div className="flex">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -126,7 +192,9 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ businessId }) => {
                 ))}
               </div>
               <span className="ml-2 font-medium">{avgRating.toFixed(1)}</span>
-              <span className="ml-1 text-gray-500">({feedback.length})</span>
+              <span className="ml-1 text-gray-500">
+                ({sortedReviews.length})
+              </span>
             </div>
           )}
 
@@ -252,7 +320,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ businessId }) => {
           <AlertTriangle className="h-8 w-8 mx-auto text-amber-500" />
           <p className="mt-3 text-gray-700">{error}</p>
         </div>
-      ) : feedback.length === 0 ? (
+      ) : sortedReviews.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-6 text-center">
           <MessageSquare className="h-12 w-12 mx-auto text-gray-300" />
           <h3 className="mt-2 text-gray-700 font-medium">No Reviews Yet</h3>
@@ -262,7 +330,7 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ businessId }) => {
         </div>
       ) : (
         <div className="space-y-4">
-          {feedback.map((item) => (
+          {sortedReviews.map((item) => (
             <div key={item.id} className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex justify-between items-start">
                 <div>
@@ -291,6 +359,12 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ businessId }) => {
                 <span className="text-sm font-medium">
                   {item.reviewerName || 'Anonymous'}
                 </span>
+
+                {(item as any).isGoogleReview && (
+                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                    Google Review
+                  </span>
+                )}
               </div>
             </div>
           ))}

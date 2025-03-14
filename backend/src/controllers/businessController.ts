@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../utils/prisma';
+import axios from 'axios';
+import cache from '../utils/cache';
 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
@@ -112,7 +114,9 @@ export const searchBusinesses = async (
   next: NextFunction
 ) => {
   try {
-    const { searchTerm, category } = req.query;
+    const { searchTerm, category, includePlaces = 'true' } = req.query;
+    console.log('Search request received:', { searchTerm, category, includePlaces });
+
     const where: any = {};
 
     // Only add search filter if searchTerm is not empty
@@ -121,13 +125,13 @@ export const searchBusinesses = async (
         {
           businessName: {
             contains: searchTerm.trim(),
-            mode: 'insensitive', // This will now work with PostgreSQL
+            mode: 'insensitive',
           }
         },
         {
           description: {
             contains: searchTerm.trim(),
-            mode: 'insensitive', // This will now work with PostgreSQL
+            mode: 'insensitive',
           }
         }
       ];
@@ -141,7 +145,10 @@ export const searchBusinesses = async (
       }
     }
 
-    const businesses = await prisma.business.findMany({
+    console.log('Database query where clause:', JSON.stringify(where));
+
+    // Search local database
+    const localBusinesses = await prisma.business.findMany({
       where,
       select: {
         id: true,
@@ -166,7 +173,99 @@ export const searchBusinesses = async (
       }
     });
 
-    return res.json(businesses);
+    console.log(`Found ${localBusinesses.length} local businesses`);
+
+    // If includePlaces is true and we have a searchTerm, fetch from Places API v1 too
+    let placesResults: any[] = [];
+    if (includePlaces === 'true' && searchTerm && typeof searchTerm === 'string' && searchTerm.trim()) {
+      try {
+        console.log('Fetching from Places API v1...');
+
+        // Create cache key
+        const cacheKey = `places_search_v1_${searchTerm.trim()}`;
+        const cachedResults = cache.get(cacheKey);
+
+        if (cachedResults && Array.isArray(cachedResults)) {
+          console.log('Using cached Places results');
+          placesResults = cachedResults;
+        } else {
+          // Use Places API v1 instead of the old API
+          const response = await axios.post(
+            'https://places.googleapis.com/v1/places:searchText',
+            {
+              textQuery: `${searchTerm} in Kigali, Rwanda`,
+              languageCode: 'en'
+            },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': process.env.GOOGLE_PLACES_API_KEY,
+                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types'
+              }
+            }
+          );
+
+          console.log(`Places API v1 response:`, JSON.stringify(response.data).substring(0, 100) + '...');
+
+          // Check if we have places in the response
+          if (!response.data.places || !Array.isArray(response.data.places)) {
+            console.error('Unexpected response format: places is not an array', typeof response.data.places);
+            placesResults = [];
+          } else {
+            console.log(`Places API v1 returned ${response.data.places.length} results`);
+
+            // Map places results to match your business schema
+            placesResults = response.data.places.map((place: any) => ({
+              id: `place_${place.id}`, // Add prefix to distinguish from local DB IDs
+              businessName: place.displayName.text,
+              description: place.formattedAddress || 'Business in Kigali',
+              categoryId: 1, // Default category
+              category: {
+                id: 1,
+                name: place.types?.[0] || 'Uncategorized'
+              },
+              contactNumber: '',
+              email: '',
+              website: '',
+              openingHours: '',
+              closingHours: '',
+              latitude: place.location?.latitude || -1.9441,
+              longitude: place.location?.longitude || 30.0619,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              external: true, // Flag to identify external sources
+              placeId: place.id // Store the Google Place ID
+            }));
+          }
+        }
+
+        // Filter out places that already exist in local results (by name)
+        const filteredPlacesResults = placesResults.filter(place =>
+          !localBusinesses.some(local =>
+            local.businessName.toLowerCase() === place.businessName.toLowerCase()
+          )
+        );
+
+        console.log(`After filtering, ${filteredPlacesResults.length} unique Places results remain`);
+        placesResults = filteredPlacesResults;
+      } catch (placeError: unknown) {
+        console.error('Error fetching from Places API:', placeError);
+        // Type guard to check if it's an axios error with response property
+        if (placeError && typeof placeError === 'object' && 'response' in placeError) {
+          const axiosError = placeError as { response?: { status: number, data: any } };
+          if (axiosError.response) {
+            console.error('Response status:', axiosError.response.status);
+            console.error('Response data:', JSON.stringify(axiosError.response.data));
+          }
+        }
+      }
+    }
+
+    // Combine results, local results first
+    const combinedResults = [...localBusinesses, ...placesResults];
+    console.log(`Returning a total of ${combinedResults.length} search results`);
+
+    return res.json(combinedResults);
   } catch (error: any) {
     console.error('Search error:', error);
     return res.status(500).json({

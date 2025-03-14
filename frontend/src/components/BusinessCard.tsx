@@ -1,24 +1,49 @@
 import { Link } from 'react-router-dom';
 import { Business } from '@/Home';
-import { Phone, Globe, Clock, ChevronRight } from 'lucide-react';
+import { Clock, Globe, MapPin, Phone } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export const BusinessCard = ({ business }: { business: Business }) => {
-  // Format date to be more readable
-  const formattedDate = new Date(business.createdAt).toLocaleDateString(
-    'en-US',
-    {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+interface BusinessCardProps {
+  business: Business & {
+    source?: 'local' | 'places';
+    placeId?: string;
+    external?: boolean;
+  };
+  isExternal?: boolean;
+}
+
+export function BusinessCard({
+  business,
+  isExternal = false,
+}: BusinessCardProps) {
+  // For Places API results, use placeId with 'place_' prefix
+  // Otherwise use regular business id
+  const getBusinessDetailPath = () => {
+    if (business.source === 'places' || isExternal) {
+      return `/business/place_${business.placeId}`;
     }
-  );
+    return `/business/${business.id}`;
+  };
 
   return (
     <Link
-      to={`/business/${business.id}`}
-      className="group bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col h-full border border-transparent hover:border-indigo-100">
-      {/* Card Header */}
+      to={getBusinessDetailPath()}
+      className={cn(
+        'group bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col h-full',
+        'border border-transparent hover:border-indigo-100',
+        isExternal && 'border-l-4 border-l-indigo-500'
+      )}>
+      {/* Card Content */}
       <div className="p-6 pb-4">
+        {isExternal && (
+          <div className="flex items-center mb-3">
+            <Globe size={16} className="text-indigo-600 mr-2" />
+            <span className="text-xs font-medium text-indigo-600">
+              Google Places
+            </span>
+          </div>
+        )}
+
         <div className="flex items-start justify-between mb-3">
           <h3 className="text-xl font-semibold text-gray-800 group-hover:text-indigo-700 line-clamp-2">
             {business.businessName}
@@ -47,7 +72,7 @@ export const BusinessCard = ({ business }: { business: Business }) => {
         {(business.openingHours || business.closingHours) && (
           <div className="flex items-center text-gray-600">
             <Clock className="h-4 w-4 mr-2 text-gray-400" />
-            <span className="text-sm">
+            <span className="text-sm truncate">
               {business.openingHours || 'N/A'} -{' '}
               {business.closingHours || 'N/A'}
             </span>
@@ -63,10 +88,10 @@ export const BusinessCard = ({ business }: { business: Business }) => {
           </div>
         )}
 
-        {business.createdAt && (
-          <div className="flex items-center text-gray-500 text-xs pt-1">
-            <Clock className="h-3 w-3 mr-1" />
-            <span>Added {formattedDate}</span>
+        {business.latitude && business.longitude && (
+          <div className="flex items-center text-gray-600">
+            <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+            <span className="text-sm truncate">View location</span>
           </div>
         )}
       </div>
@@ -74,8 +99,7 @@ export const BusinessCard = ({ business }: { business: Business }) => {
       {/* View Details Indicator */}
       <div className="text-right p-2 bg-indigo-50 text-indigo-600 text-sm font-medium flex items-center justify-end">
         <span>View details</span>
-        <ChevronRight size={16} className="ml-1" />
       </div>
     </Link>
   );
-};
+}
