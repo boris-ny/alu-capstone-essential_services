@@ -20,7 +20,7 @@ export type Business = {
   regularHours: boolean;
   priceLevel: string;
   id: number;
-  placeId: string;
+  placeId?: string;
   businessName: string;
   description?: string;
   categoryId: number;
