@@ -19,6 +19,7 @@ interface Category {
 interface ExtendedBusiness extends Business {
   source?: 'local' | 'places';
   placeId?: string;
+  external?: boolean; // Add this missing property
 }
 
 export default function Categories() {
