@@ -1,16 +1,13 @@
 import axios from "axios";
 
-const localUrl = import.meta.env.LOCAL_API_URL as string
+
+
+
 
 // Determine the API base URL based on environment
 const getBaseUrl = () => {
-  // For local development
-  if (import.meta.env.NODE_ENV === 'development') {
-    return localUrl
-  }
-
-  // For production, use the deployed backend URL or fall back to a default
-  return import.meta.env.VITE_API_URL;
+  // Always use localhost:3000 from environment or fallback
+  return import.meta.env.VITE_API_URL || 'http://localhost:3000';
 };
 
 // Create an axios instance with the appropriate base URL
