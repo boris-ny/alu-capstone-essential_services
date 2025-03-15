@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Search, Loader2, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Business } from '@/Home';
@@ -25,10 +24,6 @@ const SearchServices: React.FC<SearchProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(
-    null
-  );
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -62,37 +57,6 @@ const SearchServices: React.FC<SearchProps> = ({
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-
-    // Clear previous timeout
-    if (typingTimeout) {
-      clearTimeout(typingTimeout);
-    }
-
-    // Set a new timeout to fetch suggestions after user stops typing
-    const timeout = setTimeout(() => {
-      if (value.length > 2) {
-        fetchSuggestions(value);
-      } else {
-        setSuggestions([]);
-      }
-    }, 500);
-
-    setTypingTimeout(timeout);
-  };
-
-  const fetchSuggestions = async (input: string) => {
-    try {
-      const response = await api.get('/places/suggestions', {
-        params: {
-          input,
-          location: '-1.9441,30.0619', // Kigali coordinates
-        },
-      });
-      setSuggestions(response.data);
-    } catch (error) {
-      console.error('Error fetching suggestions:', error);
-      setSuggestions([]);
-    }
   };
 
   const handleSearch = async () => {
@@ -100,17 +64,17 @@ const SearchServices: React.FC<SearchProps> = ({
     setError('');
 
     try {
-      console.log('Searching with term:', searchTerm);
+      // console.log('Searching with term:', searchTerm);
 
       const params: Record<string, string> = {};
       if (searchTerm) params.searchTerm = searchTerm;
       if (category) params.category = category;
 
-      console.log('Search params:', params);
+      // console.log('Search params:', params);
 
       const response = await api.get('/businesses/search', { params });
 
-      console.log('Search results:', response.data);
+      // console.log('Search results:', response.data);
 
       if (Array.isArray(response.data) && response.data.length > 0) {
         onSearchResults(response.data);
@@ -221,6 +185,7 @@ const SearchServices: React.FC<SearchProps> = ({
           </span>
         </button>
       </div>
+      {error && <div className="text-red-600 mt-2 text-sm">{error}</div>}
     </form>
   );
 };
