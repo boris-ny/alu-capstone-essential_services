@@ -188,11 +188,11 @@ export const getPlaceDetails = async (req: Request, res: Response) => {
     // Check if we have a cached result
     const cachedResult = cache.get(cacheKey);
     if (cachedResult) {
-      console.log('Returning cached place details');
+      // console.log('Returning cached place details');
       return res.json(cachedResult);
     }
 
-    console.log(`Fetching details for place ID: ${placeId}`);
+    // console.log(`Fetching details for place ID: ${placeId}`);
 
     // Use Places API v1 for details with expanded fields
     const response = await axios.get(
@@ -207,7 +207,7 @@ export const getPlaceDetails = async (req: Request, res: Response) => {
     );
 
     const details = response.data;
-    console.log('Place details received:', JSON.stringify(details).substring(0, 200) + '...');
+    // console.log('Place details received:', JSON.stringify(details).substring(0, 200) + '...');
 
     // Format the response to match your business model
     const formattedResult = {
