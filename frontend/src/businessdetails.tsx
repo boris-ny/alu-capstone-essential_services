@@ -23,7 +23,6 @@ import {
   Smartphone,
   ArrowLeft,
   Building,
-  DollarSign,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import api from '@/services/api';
@@ -478,31 +477,11 @@ const BusinessDetails = () => {
         <div className="mt-12">
           <FeedbackSection
             businessId={id as string}
-            googleReviews={business.reviews || []}
+            googleReviews={
+              Array.isArray(business.reviews) ? business.reviews : []
+            }
           />
         </div>
-
-        {/* Price Level */}
-        {business.priceLevel && (
-          <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">
-              Price Level
-            </h3>
-            <div className="flex items-center">
-              {Array.from({ length: business.priceLevel }).map((_, i) => (
-                <DollarSign key={i} className="w-5 h-5 text-green-600" />
-              ))}
-              {Array.from({ length: 4 - (business.priceLevel || 0) }).map(
-                (_, i) => (
-                  <DollarSign
-                    key={i + business.priceLevel}
-                    className="w-5 h-5 text-gray-300"
-                  />
-                )
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
