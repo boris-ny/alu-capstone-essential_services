@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Search, Loader2, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Business } from '@/Home';
