@@ -7,13 +7,8 @@ import { Button } from './components/ui/button';
 import { cn } from './lib/utils';
 import { Loader2, Globe } from 'lucide-react';
 import api from './services/api';
-import { Business } from './Home';
 import { BusinessCard } from './components/BusinessCard';
-
-interface Category {
-  id: number;
-  name: string;
-}
+import { Business, Category } from './lib/types';
 
 // Extended Business interface to include source and placeId
 interface ExtendedBusiness extends Business {
@@ -73,7 +68,7 @@ export default function Categories() {
     setIsPlacesLoading(true);
     try {
       const response = await api.get('/places/suggestions', {
-        params: { input: categoryName },
+        params: { input: categoryName, location: 'Kigali, Rwanda' },
       });
 
       // Get places details (limiting to 8 to avoid overwhelming the UI)
