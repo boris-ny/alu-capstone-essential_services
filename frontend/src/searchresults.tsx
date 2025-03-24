@@ -1,6 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/header';
-import { Business } from '@/Home';
 import SearchServices from '@/components/search';
 import { useState, useEffect } from 'react';
 import {
@@ -13,6 +12,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Business } from './lib/types';
 
 const SearchResults = () => {
   const location = useLocation();
