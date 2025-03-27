@@ -57,7 +57,6 @@ const SearchServices: React.FC<SearchProps> = ({
     isLoading,
     error,
     isError,
-    isFetched,
   } = useBusinessSearch(searchParams);
 
   const {
@@ -70,7 +69,7 @@ const SearchServices: React.FC<SearchProps> = ({
     // Send search results to parent component when results are available
     if (results) {
       // Avoid duplicate sends of the same results
-      const resultsFingerprint = JSON.stringify(results.data.map((b) => b.id));
+      // const resultsFingerprint = JSON.stringify(results.data.map((b) => b.id));
 
       // Only send results if:
       // 1. We have results AND
