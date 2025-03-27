@@ -7,11 +7,7 @@ import {
   MapMouseEvent,
 } from '@vis.gl/react-google-maps';
 import { cn } from '@/lib/utils';
-
-interface Location {
-  lat: number;
-  lng: number;
-}
+import { Location } from '@/lib/types';
 
 interface LocationPickerProps {
   initialLocation?: Location;

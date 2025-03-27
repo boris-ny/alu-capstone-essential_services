@@ -4,23 +4,7 @@ import { Star, Send, Loader, AlertTriangle, MessageSquare } from 'lucide-react';
 import api from '@/services/api';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
-
-interface Feedback {
-  id: number;
-  businessId: number;
-  rating: number;
-  comment: string | null;
-  reviewerName: string | null;
-  createdAt: string;
-}
-
-// Add interface for Google Places reviews
-interface PlaceReview {
-  author: string;
-  rating: number;
-  text: string;
-  time: string;
-}
+import { Feedback, PlaceReview } from '@/lib/types';
 
 interface FeedbackSectionProps {
   businessId: number | string;

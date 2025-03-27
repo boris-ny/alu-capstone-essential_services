@@ -14,30 +14,7 @@ import {
   Map,
   ChevronRight,
 } from 'lucide-react';
-
-export type Business = {
-  reviews: boolean;
-  regularHours: boolean;
-  priceLevel: string;
-  id: number;
-  placeId?: string;
-  businessName: string;
-  description?: string;
-  categoryId: number;
-  contactNumber: string;
-  latitude?: number;
-  openingHours?: string;
-  closingHours?: string;
-  longitude?: number;
-  email?: string;
-  website?: string;
-  createdAt: string;
-  updatedAt: string;
-  category?: {
-    id: number;
-    name: string;
-  };
-};
+import { Business } from './lib/types';
 
 const categories = [
   {
@@ -261,7 +238,6 @@ export default function Home() {
             <div>
               <h3 className="text-xl font-bold mb-4 text-white">Contact</h3>
               <p>Kigali, Rwanda</p>
-              <p>info@essentialservices.rw</p>
             </div>
           </div>
           <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm">

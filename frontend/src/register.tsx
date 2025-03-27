@@ -2,9 +2,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import LocationPicker from '@/components/LocationPicker';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { cn } from './lib/utils';
 import { Header } from './components/header';
 import {
@@ -23,7 +23,9 @@ import {
   Info,
   Clock,
 } from 'lucide-react';
-import api from './services/api';
+import { useRegister } from './hooks/useAuth';
+import { RegisterParams } from './services/authService';
+import { useCategories } from './hooks/useCategories';
 
 // Define Zod schema for Register Business form
 const createBusinessSchema = z.object({
@@ -48,17 +50,9 @@ const createBusinessSchema = z.object({
   longitude: z.number().optional(),
 });
 
-interface Category {
-  id: number;
-  name: string;
-}
+type BusinessFormData = z.infer<typeof createBusinessSchema>;
 
 function Register() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [categoriesError, setCategoriesError] = useState('');
-  const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [location, setLocation] = useState<{
     lat: number;
     lng: number;
@@ -67,40 +61,38 @@ function Register() {
   const [formData, setFormData] = useState({});
   const totalSteps = 3;
 
+  // React Query hooks
   const {
-    register,
+    data: categories = [],
+    isLoading: isCategoriesLoading,
+    error: categoriesError,
+  } = useCategories();
+  const register = useRegister();
+
+  const {
+    register: registerField,
     handleSubmit,
     formState: { errors },
     trigger,
     getValues,
-  } = useForm({
+  } = useForm<BusinessFormData>({
     resolver: zodResolver(createBusinessSchema),
   });
 
+  // Add this function to handle form submission
+  const onSubmit = (data: BusinessFormData) => {
+    const processedData = {
+      ...data,
+      categoryId: parseInt(data.categoryId),
+    };
+
+    register.mutate(processedData as RegisterParams);
+  };
   const handleLocationSelect = (newLocation: { lat: number; lng: number }) => {
     setLocation(newLocation);
   };
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setCategoriesLoading(true);
-      try {
-        const response = await api.get('/categories');
-        setCategories(response.data);
-        setCategoriesError('');
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        setCategoriesError('Failed to load categories');
-      } finally {
-        setCategoriesLoading(false);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
   const nextStep = async () => {
-    // To this (using type assertion):
     const fieldsToValidate = (
       currentStep === 1
         ? ['businessName', 'password', 'categoryId']
@@ -120,52 +112,6 @@ function Register() {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  interface BusinessFormData {
-    businessName: string;
-    password: string;
-    description?: string;
-    categoryId: string;
-    contactNumber: string;
-    email?: string;
-    website?: string;
-    latitude?: number;
-    longitude?: number;
-  }
-
-  interface BusinessResponse {
-    id: number;
-    businessName: string;
-    categoryId: number;
-    description?: string;
-    contactNumber: string;
-    email?: string;
-    website?: string;
-    latitude?: number;
-    longitude?: number;
-    createdAt: string;
-    updatedAt: string;
-  }
-
-  const handleSubmitForm = async (data: BusinessFormData): Promise<void> => {
-    setIsSubmitting(true);
-    try {
-      const response = await api.post<BusinessResponse>('/businesses', {
-        ...data,
-        categoryId: parseInt(data.categoryId),
-        latitude: location?.lat,
-        longitude: location?.lng,
-      });
-      console.log('Created business:', response.data);
-      alert('Business created successfully!');
-      navigate('/login');
-    } catch (error) {
-      console.error(error);
-      alert('Error creating business');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleRegistrationSubmit = async () => {
     // Make sure we have location data
     if (!location) {
@@ -180,24 +126,13 @@ function Register() {
     // Get all form data
     const formData = getValues();
 
-    // Now manually handle submission
-    setIsSubmitting(true);
-    try {
-      const response = await api.post('/businesses', {
-        ...formData,
-        categoryId: parseInt(formData.categoryId),
-        latitude: location.lat,
-        longitude: location.lng,
-      });
-      console.log('Created business:', response.data);
-      alert('Business created successfully!');
-      navigate('/login');
-    } catch (error) {
-      console.error(error);
-      alert('Error creating business');
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Submit the registration
+    register.mutate({
+      ...formData,
+      categoryId: parseInt(formData.categoryId),
+      latitude: location.lat,
+      longitude: location.lng,
+    } as RegisterParams);
   };
 
   return (
@@ -255,9 +190,17 @@ function Register() {
           </div>
 
           {/* Form Content */}
-          <form
-            onSubmit={handleSubmit(handleSubmitForm)}
-            className="p-6 md:p-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 md:p-8">
+            {/* Error message from mutation */}
+            {register.error && (
+              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
+                <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+                <span>
+                  An error occurred during registration. Please try again.
+                </span>
+              </div>
+            )}
+
             {/* Step 1: Basic Info */}
             {currentStep === 1 && (
               <div className="space-y-6">
@@ -268,7 +211,7 @@ function Register() {
                   <input
                     type="text"
                     placeholder="Enter your business name"
-                    {...register('businessName')}
+                    {...registerField('businessName')}
                     className={cn(
                       'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
                       errors.businessName
@@ -285,7 +228,7 @@ function Register() {
                   <input
                     type="password"
                     placeholder="Create a password (min. 6 characters)"
-                    {...register('password')}
+                    {...registerField('password')}
                     className={cn(
                       'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
                       errors.password
@@ -297,21 +240,24 @@ function Register() {
 
                 <FormField
                   label="Business Category"
-                  error={errors.categoryId?.message || categoriesError}
+                  error={
+                    errors.categoryId?.message ||
+                    (categoriesError ? 'Failed to load categories' : undefined)
+                  }
                   icon={<Building className="h-5 w-5 text-gray-400" />}>
                   <select
-                    {...register('categoryId')}
+                    {...registerField('categoryId')}
                     className={cn(
                       'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2 appearance-none',
-                      categoriesLoading ? 'bg-gray-100 text-gray-500' : '',
+                      isCategoriesLoading ? 'bg-gray-100 text-gray-500' : '',
                       errors.categoryId || categoriesError
                         ? 'border-red-300 focus:ring-red-200'
                         : 'border-gray-300 focus:ring-indigo-200 focus:border-indigo-400'
                     )}
                     defaultValue=""
-                    disabled={categoriesLoading}>
+                    disabled={isCategoriesLoading}>
                     <option value="" disabled>
-                      {categoriesLoading
+                      {isCategoriesLoading
                         ? 'Loading categories...'
                         : categoriesError
                           ? 'Failed to load categories'
@@ -340,7 +286,7 @@ function Register() {
                   <input
                     type="tel"
                     placeholder="e.g., +250 78 123 4567"
-                    {...register('contactNumber')}
+                    {...registerField('contactNumber')}
                     className={cn(
                       'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
                       errors.contactNumber
@@ -358,7 +304,7 @@ function Register() {
                   <input
                     type="email"
                     placeholder="your@email.com (optional)"
-                    {...register('email')}
+                    {...registerField('email')}
                     className={cn(
                       'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
                       errors.email
@@ -376,7 +322,7 @@ function Register() {
                   <input
                     type="url"
                     placeholder="https://example.com (optional)"
-                    {...register('website')}
+                    {...registerField('website')}
                     className={cn(
                       'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
                       errors.website
@@ -394,7 +340,7 @@ function Register() {
                     <input
                       type="text"
                       placeholder="e.g., 9:00 AM"
-                      {...register('openingHours')}
+                      {...registerField('openingHours')}
                       className={cn(
                         'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
                         errors.openingHours
@@ -412,7 +358,7 @@ function Register() {
                     <input
                       type="text"
                       placeholder="e.g., 5:00 PM"
-                      {...register('closingHours')}
+                      {...registerField('closingHours')}
                       className={cn(
                         'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2',
                         errors.closingHours
@@ -434,7 +380,7 @@ function Register() {
                   icon={<FileText className="h-5 w-5 text-gray-400" />}>
                   <textarea
                     placeholder="Describe your business and the services you offer..."
-                    {...register('description')}
+                    {...registerField('description')}
                     rows={4}
                     className={cn(
                       'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2 resize-none',
@@ -508,17 +454,17 @@ function Register() {
                 </button>
               ) : (
                 <button
-                  type="button" // Changed from type="submit" to type="button"
-                  disabled={isSubmitting || !location} // Disable if no location selected
-                  onClick={handleRegistrationSubmit} // New handler function
+                  type="button"
+                  disabled={register.isPending || !location}
+                  onClick={handleRegistrationSubmit}
                   className={cn(
                     'w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-lg text-white transition-colors',
-                    isSubmitting || !location
+                    register.isPending || !location
                       ? 'bg-indigo-400 cursor-not-allowed'
                       : 'bg-indigo-600 hover:bg-indigo-700',
                     'sm:ml-auto'
                   )}>
-                  {isSubmitting ? (
+                  {register.isPending ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                       <span>Registering...</span>
@@ -588,6 +534,27 @@ const FormField = ({
     </div>
   );
 };
+
+// AlertCircle component
+const AlertCircle = ({
+  className,
+  ...props
+}: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={cn(className)}
+    {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
 
 // ChevronDown component with className support
 const ChevronDown = ({

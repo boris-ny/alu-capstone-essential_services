@@ -83,7 +83,7 @@ app.delete("/feedback/:id", (req: Request, res: Response) => {
 });
 
 // Places routes
-app.get("/places/import", authMiddleware, (req: Request, res: Response) => {
+app.get("/places/search", (req: Request, res: Response) => {
   placesController.importBusinessesFromPlaces(req, res);
 });
 
@@ -96,36 +96,7 @@ app.get("/places/cache/clear", (req: Request, res: Response) => {
   placesController.clearPlacesCache(req, res);
 });
 
-app.get("/places/test", async (req: Request, res: Response) => {
-  try {
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    console.log('Using API key:', apiKey ? `${apiKey.substring(0, 5)}...` : 'undefined');
 
-    const response = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
-      params: {
-        query: 'restaurant in Kigali',
-        location: '-1.9441,30.0619',
-        radius: 20000,
-        key: apiKey
-      }
-    });
-
-    console.log('Places API response status:', response.status);
-    console.log('Places API results count:', response.data.results?.length || 0);
-
-    res.json({
-      status: response.data.status,
-      results: response.data.results
-    });
-  } catch (error: any) {
-    console.error('Places API test error:', error);
-    res.status(500).json({
-      error: 'Places API test failed',
-      details: error.message,
-      stack: error.stack
-    });
-  }
-});
 
 
 // Make sure this is placed AFTER any specific routes that start with /places/ but BEFORE the parameter route
