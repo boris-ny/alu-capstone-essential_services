@@ -1,18 +1,17 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/header';
-import { Business } from '@/Home';
 import SearchServices from '@/components/search';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  Phone,
-  Globe,
   MapPin,
   Filter,
-  Clock,
-  ChevronRight,
   SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Business } from './lib/types';
+import { InfoBusinessCard } from './components/infoBusinessCard';
 
 const SearchResults = () => {
   const location = useLocation();
@@ -25,6 +24,15 @@ const SearchResults = () => {
   const [sortOption, setSortOption] = useState('name');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(9);
+  const isPerformingSearch = useRef(false);
+
+  // Extract search parameters from location state or search query
+  const initialSearchTerm = location.state?.searchTerm || '';
+  const initialCategory = location.state?.category || '';
 
   const uniqueCategories = Array.from(
     new Set(
@@ -58,44 +66,103 @@ const SearchResults = () => {
       );
     }
 
-    setFilteredResults(sorted);
-  }, [searchResults, sortOption, categoryFilter]);
+    // Update pagination metadata
+    setTotalItems(sorted.length);
+    setTotalPages(Math.ceil(sorted.length / itemsPerPage));
 
-  const handleNewSearch = (newResults: Business[]) => {
+    // Paginate the results
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setFilteredResults(sorted.slice(startIndex, endIndex));
+  }, [searchResults, sortOption, categoryFilter, currentPage, itemsPerPage]);
+
+  const handleNewSearch = (
+    newResults: Business[],
+    meta?: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }
+  ) => {
+    // Set loading state immediately when search is initiated
     setIsLoading(true);
-    setTimeout(() => {
+
+    // Reset the isPerformingSearch at the beginning
+    isPerformingSearch.current = true;
+
+    try {
+      // Update state with new results immediately
       setSearchResults(newResults);
-      navigate('/search-results', {
-        state: { results: newResults },
-        replace: true,
-      });
+
+      // Reset to first page when performing a new search
+      setCurrentPage(1);
+
+      // Set pagination metadata if available
+      if (meta) {
+        setTotalPages(meta.totalPages);
+        setTotalItems(meta.total);
+        setItemsPerPage(meta.limit);
+      }
+
+      // Only update navigation state if we actually have results
+      // and they're different from what we already have
+      if (newResults.length > 0) {
+        navigate('/search-results', {
+          state: {
+            results: newResults,
+            searchTerm: initialSearchTerm,
+            category: initialCategory,
+            meta,
+          },
+          replace: true, // Replace current history entry instead of adding a new one
+        });
+      }
+    } finally {
+      // Always update loading state regardless of success/failure
       setIsLoading(false);
-    }, 500);
+      isPerformingSearch.current = false;
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    // Ensure page is within bounds
+    if (newPage < 1 || newPage > totalPages) return;
+
+    // Update the current page
+    setCurrentPage(newPage);
+
+    // Scroll to top of results
+    window.scrollTo({
+      top: document.getElementById('results-section')?.offsetTop || 0,
+      behavior: 'smooth',
+    });
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50">
       <Header />
-
-      {/* Search Bar Section with Gradient Background */}
       <div className="bg-gradient-to-r from-indigo-700 to-indigo-900 py-6 px-4">
         <div className="container mx-auto max-w-6xl">
           <SearchServices
-            onSearchResults={handleNewSearch}
+            onSearchResults={(results, meta) => handleNewSearch(results, meta)}
+            initialSearchTerm={initialSearchTerm}
+            initialCategory={initialCategory}
             className="bg-white/20 backdrop-blur-sm p-4 rounded-xl shadow-lg"
           />
         </div>
       </div>
 
-      <div className="container mx-auto max-w-6xl px-4 py-8">
-        {/* Results Header */}
+      <div
+        id="results-section"
+        className="container mx-auto max-w-6xl px-4 py-8">
         <div className="bg-white rounded-2xl shadow-md p-5 mb-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
                 Search Results
                 <span className="text-lg md:text-xl font-medium text-gray-500 ml-2">
-                  ({filteredResults.length})
+                  ({totalItems})
                 </span>
               </h1>
               {categoryFilter !== 'all' && (
@@ -143,6 +210,19 @@ const SearchResults = () => {
                 <option value="category">Sort by Category</option>
                 <option value="recent">Sort by Most Recent</option>
               </select>
+
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1); // Reset to first page when changing items per page
+                }}
+                className="px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto">
+                <option value="9">9 per page</option>
+                <option value="12">12 per page</option>
+                <option value="18">18 per page</option>
+                <option value="24">24 per page</option>
+              </select>
             </div>
           </div>
         </div>
@@ -150,7 +230,7 @@ const SearchResults = () => {
         {/* Loading State */}
         {isLoading ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: itemsPerPage }).map((_, i) => (
               <div
                 key={i}
                 className="bg-white rounded-2xl shadow-md overflow-hidden">
@@ -165,95 +245,111 @@ const SearchResults = () => {
             ))}
           </div>
         ) : filteredResults.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredResults.map((business) => (
-              <BusinessCard key={business.id} business={business} />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredResults.map((business) => (
+                <InfoBusinessCard key={business.id} business={business} />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={cn(
+                      'p-2 rounded-md border border-gray-300',
+                      currentPage === 1
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    )}>
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  {/* Page Numbers */}
+                  <div className="flex gap-1">
+                    {[...Array(totalPages)].map((_, index) => {
+                      const pageNumber = index + 1;
+
+                      // Show ellipsis for large page ranges
+                      if (totalPages > 7) {
+                        // Always show first page, current page, and last page
+                        // For others, show ellipsis if they're far from current
+                        if (
+                          pageNumber === 1 ||
+                          pageNumber === totalPages ||
+                          (pageNumber >= currentPage - 1 &&
+                            pageNumber <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={pageNumber}
+                              onClick={() => handlePageChange(pageNumber)}
+                              className={cn(
+                                'w-10 h-10 rounded-md border',
+                                pageNumber === currentPage
+                                  ? 'bg-indigo-600 text-white border-indigo-600'
+                                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                              )}>
+                              {pageNumber}
+                            </button>
+                          );
+                        } else if (
+                          (pageNumber === currentPage - 2 && currentPage > 3) ||
+                          (pageNumber === currentPage + 2 &&
+                            currentPage < totalPages - 2)
+                        ) {
+                          return (
+                            <span
+                              key={pageNumber}
+                              className="text-gray-500 self-center">
+                              ...
+                            </span>
+                          );
+                        } else {
+                          return null;
+                        }
+                      } else {
+                        // If total pages <= 7, show all page numbers
+                        return (
+                          <button
+                            key={pageNumber}
+                            onClick={() => handlePageChange(pageNumber)}
+                            className={cn(
+                              'w-10 h-10 rounded-md border',
+                              pageNumber === currentPage
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            )}>
+                            {pageNumber}
+                          </button>
+                        );
+                      }
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={cn(
+                      'p-2 rounded-md border border-gray-300',
+                      currentPage === totalPages
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    )}>
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <EmptyState />
         )}
       </div>
     </div>
-  );
-};
-
-// Business Card Component
-const BusinessCard = ({ business }: { business: Business }) => {
-  // Format date to be more readable
-  const formattedDate = new Date(business.createdAt).toLocaleDateString(
-    'en-US',
-    {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }
-  );
-
-  return (
-    <Link
-      to={`/business/${business.id}`}
-      className="group bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col h-full border border-transparent hover:border-indigo-100">
-      {/* Card Header */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-3">
-          <h3 className="text-xl font-semibold text-gray-800 group-hover:text-indigo-700 line-clamp-2">
-            {business.businessName}
-          </h3>
-          {business.category?.name && (
-            <span className="px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full whitespace-nowrap ml-2">
-              {business.category.name}
-            </span>
-          )}
-        </div>
-
-        <p className="text-gray-600 line-clamp-3 mb-3">
-          {business.description || 'No description available'}
-        </p>
-      </div>
-
-      {/* Card Footer */}
-      <div className="mt-auto border-t border-gray-100 bg-gray-50 p-4 space-y-2">
-        {business.contactNumber && (
-          <div className="flex items-center text-gray-600">
-            <Phone className="h-4 w-4 mr-2 text-gray-400" />
-            <span className="text-sm">{business.contactNumber}</span>
-          </div>
-        )}
-
-        {(business.openingHours || business.closingHours) && (
-          <div className="flex items-center text-gray-600">
-            <Clock className="h-4 w-4 mr-2 text-gray-400" />
-            <span className="text-sm">
-              {business.openingHours || 'N/A'} -{' '}
-              {business.closingHours || 'N/A'}
-            </span>
-          </div>
-        )}
-
-        {business.website && (
-          <div className="flex items-center text-gray-600 overflow-hidden">
-            <Globe className="h-4 w-4 min-w-[16px] mr-2 text-gray-400" />
-            <span className="text-sm truncate">
-              {business.website.replace(/^https?:\/\//, '')}
-            </span>
-          </div>
-        )}
-
-        {business.createdAt && (
-          <div className="flex items-center text-gray-500 text-xs pt-1">
-            <Clock className="h-3 w-3 mr-1" />
-            <span>Added {formattedDate}</span>
-          </div>
-        )}
-      </div>
-
-      {/* View Details Indicator */}
-      <div className="text-right p-2 bg-indigo-50 text-indigo-600 text-sm font-medium flex items-center justify-end">
-        <span>View details</span>
-        <ChevronRight size={16} className="ml-1" />
-      </div>
-    </Link>
   );
 };
 

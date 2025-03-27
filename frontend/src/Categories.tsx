@@ -1,153 +1,34 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Header } from './components/header';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import SearchServices from './components/search';
 import { Button } from './components/ui/button';
 import { cn } from './lib/utils';
-import { Loader2, Globe } from 'lucide-react';
-import api from './services/api';
-import { Business } from './Home';
-import { BusinessCard } from './components/BusinessCard';
-
-interface Category {
-  id: number;
-  name: string;
-}
+import { Loader2, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
+import { InfoBusinessCard } from './components/infoBusinessCard';
+import { Business, Category } from './lib/types';
+import { useCategories } from './hooks/useCategories';
+import { useBusinessesByCategory } from './hooks/useBusinesses';
 
 // Extended Business interface to include source and placeId
 interface ExtendedBusiness extends Business {
   source?: 'local' | 'places';
   placeId?: string;
-  external?: boolean; // Add this missing property
+  external?: boolean;
 }
 
 export default function Categories() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(9);
   const [businesses, setBusinesses] = useState<ExtendedBusiness[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
-  const [isPlacesLoading, setIsPlacesLoading] = useState(false);
   const [showPlacesResults, setShowPlacesResults] = useState(true);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
-  // Fetch all categories on mount
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setIsCategoriesLoading(true);
-      try {
-        const response = await api.get('/categories');
-        setCategories(response.data);
-
-        // Check if a category was passed from the home page
-        if (location.state?.selectedCategoryName) {
-          const categoryName = location.state.selectedCategoryName;
-          const matchedCategory = response.data.find(
-            (cat: Category) => cat.name === categoryName
-          );
-
-          if (matchedCategory) {
-            // Auto-select the category and fetch its businesses
-            handleCategoryClick(matchedCategory.id);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      } finally {
-        setIsCategoriesLoading(false);
-      }
-    };
-
-    fetchCategories();
-  }, [location.state]);
-
-  // Handle search results
-  const handleSearchResults = (results: Business[]) => {
-    navigate('/search-results', { state: { results } });
-  };
-
-  // Get places based on category name
-  const fetchPlacesByCategory = async (categoryName: string) => {
-    setIsPlacesLoading(true);
-    try {
-      const response = await api.get('/places/suggestions', {
-        params: { input: categoryName },
-      });
-
-      // Get places details (limiting to 8 to avoid overwhelming the UI)
-      const placesPromises = response.data
-        .slice(0, 8)
-        .map(async (place: any) => {
-          try {
-            const detailsResponse = await api.get(`/places/${place.place_id}`);
-            return {
-              ...detailsResponse.data,
-              source: 'places',
-              // Store the Google Places ID
-              placeId: place.place_id,
-              // Mark as external to render differently in UI
-              external: true,
-            };
-          } catch (err) {
-            console.error(
-              `Failed to fetch details for place ${place.place_id}:`,
-              err
-            );
-            return null;
-          }
-        });
-
-      const placesResults = (await Promise.all(placesPromises)).filter(Boolean);
-      return placesResults;
-    } catch (error) {
-      console.error('Error fetching places by category:', error);
-      return [];
-    } finally {
-      setIsPlacesLoading(false);
-    }
-  };
-
-  // Handle category selection
-  const handleCategoryClick = async (categoryId: number) => {
-    setSelectedCategory(categoryId);
-    setIsLoading(true);
-    setBusinesses([]); // Clear previous results
-
-    try {
-      // Fetch local businesses
-      const response = await api.get('/businesses/search', {
-        params: { category: categoryId },
-      });
-
-      // Mark local businesses
-      const localBusinesses = response.data.map((business: Business) => ({
-        ...business,
-        source: 'local',
-      }));
-
-      setBusinesses(localBusinesses);
-
-      // Get category name
-      const categoryName = getCategoryName(categoryId);
-
-      // Also fetch from Places API if category name is available
-      if (categoryName && showPlacesResults) {
-        const placesResults = await fetchPlacesByCategory(categoryName);
-
-        // Combine local and places results
-        setBusinesses((prevBusinesses) => [
-          ...prevBusinesses,
-          ...placesResults,
-        ]);
-      }
-    } catch (error) {
-      console.error('Error fetching businesses by category:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Replace direct API call with useCategories hook
+  const { data: categories = [], isLoading: isCategoriesLoading } =
+    useCategories();
 
   // Get category name by ID
   const getCategoryName = (categoryId: number) => {
@@ -155,20 +36,79 @@ export default function Categories() {
     return category ? category.name : '';
   };
 
+  // Use the enhanced useBusinessesByCategory hook with category name
+  const {
+    data: categoryBusinesses,
+    isLoading: isBusinessesLoading,
+    refetch: refetchBusinesses,
+  } = useBusinessesByCategory(
+    selectedCategory,
+    selectedCategory ? getCategoryName(selectedCategory) : null,
+    currentPage,
+    itemsPerPage
+  );
+
+  // Check if a category was passed from the home page
+  useEffect(() => {
+    if (categories.length > 0 && location.state?.selectedCategoryName) {
+      const categoryName = location.state.selectedCategoryName;
+      const matchedCategory = categories.find(
+        (cat: Category) => cat.name === categoryName
+      );
+
+      if (matchedCategory) {
+        // Auto-select the category and fetch its businesses
+        handleCategoryClick(matchedCategory.id);
+      }
+    }
+  }, [categories, location.state]);
+
+  // Update businesses state when categoryBusinesses changes
+  useEffect(() => {
+    if (categoryBusinesses && !isSearchMode) {
+      setBusinesses(categoryBusinesses.data);
+    }
+  }, [categoryBusinesses, isSearchMode]);
+
+  // Handle category selection
+  const handleCategoryClick = (categoryId: number) => {
+    setSelectedCategory(categoryId);
+    setCurrentPage(1);
+    setIsSearchMode(false);
+  };
+
+  // Pagination handlers
+  const handleNextPage = () => {
+    if (
+      categoryBusinesses &&
+      currentPage < categoryBusinesses.meta.totalPages
+    ) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   // Toggle showing Places API results
   const togglePlacesResults = () => {
     const newShowPlaces = !showPlacesResults;
     setShowPlacesResults(newShowPlaces);
 
-    // If toggling on and we have a selected category, refetch
-    if (newShowPlaces && selectedCategory !== null) {
-      handleCategoryClick(selectedCategory);
-    } else if (!newShowPlaces) {
-      // Filter out places results
-      setBusinesses(
-        businesses.filter((business) => business.source !== 'places')
-      );
+    // Refetch with the new setting if in category mode
+    if (selectedCategory !== null && !isSearchMode) {
+      refetchBusinesses();
     }
+  };
+
+  // Handle search results
+  const handleSearchResults = (results: ExtendedBusiness[]) => {
+    setIsSearchMode(true);
+    setSelectedCategory(null);
+    setBusinesses(results);
   };
 
   return (
@@ -215,7 +155,7 @@ export default function Categories() {
               <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-4">
               {categories.map((category) => (
                 <Button
                   key={category.id}
@@ -235,15 +175,21 @@ export default function Categories() {
         </div>
       </section>
 
-      {/* Businesses Section - Shows when a category is selected */}
-      {selectedCategory !== null && (
+      {/* Businesses Section - Shows when a category is selected or search results are available */}
+      {(selectedCategory !== null || businesses.length > 0) && (
         <section className="py-8 px-4 bg-white border-t border-gray-100">
           <div className="container mx-auto max-w-6xl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
               <h2 className="text-2xl font-bold">
-                {getCategoryName(selectedCategory)} Services
+                {selectedCategory !== null
+                  ? `${getCategoryName(selectedCategory)} Services`
+                  : 'Search Results'}
                 <span className="text-lg font-medium text-gray-500 ml-2">
-                  ({businesses.length})
+                  {isSearchMode
+                    ? `(${businesses.length})`
+                    : categoryBusinesses?.meta
+                      ? `(${categoryBusinesses.meta.total})`
+                      : '(0)'}
                 </span>
               </h2>
               <div className="flex gap-3">
@@ -261,64 +207,77 @@ export default function Categories() {
                     ? 'Hide Google Places'
                     : 'Show Google Places'}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedCategory(null)}
-                  className="text-indigo-600 border-indigo-200">
-                  Show All Categories
-                </Button>
+                {selectedCategory !== null && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedCategory(null)}
+                    className="text-indigo-600 border-indigo-200">
+                    Show All Categories
+                  </Button>
+                )}
               </div>
             </div>
 
-            {isLoading || isPlacesLoading ? (
+            {isBusinessesLoading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
               </div>
             ) : businesses.length > 0 ? (
               <div>
-                {/* Local Businesses */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4">
-                    Local Listings
-                  </h3>
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {businesses
-                      .filter((business) => business.source === 'local')
-                      .map((business) => (
-                        <BusinessCard key={business.id} business={business} />
-                      ))}
-                  </div>
-                  {businesses.filter((business) => business.source === 'local')
-                    .length === 0 && (
-                    <div className="bg-gray-50 rounded-xl p-6 text-center">
-                      <p className="text-gray-600">
-                        No local businesses found in this category
-                      </p>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {businesses.map((business) => (
+                    <InfoBusinessCard
+                      key={business.placeId || business.id}
+                      business={business}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination controls - only show for category results, not search */}
+                {!isSearchMode &&
+                  categoryBusinesses?.meta &&
+                  categoryBusinesses.meta.totalPages > 1 && (
+                    <div className="flex justify-center items-center mt-8 gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1">
+                        <ChevronLeft size={16} />
+                        Previous
+                      </Button>
+                      <span className="mx-4 text-gray-600">
+                        Page {currentPage} of{' '}
+                        {categoryBusinesses.meta.totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        onClick={handleNextPage}
+                        disabled={
+                          currentPage >= categoryBusinesses.meta.totalPages
+                        }
+                        className="flex items-center gap-1">
+                        Next
+                        <ChevronRight size={16} />
+                      </Button>
+                    </div>
+                  )}
+
+                {/* Legend for sources */}
+                <div className="mt-8 flex items-center gap-6 text-sm text-gray-600">
+                  {businesses.some((b) => !b.external) && (
+                    <div className="flex items-center">
+                      <span className="w-3 h-3 bg-indigo-600 rounded-full mr-2"></span>
+                      <span>Local listings</span>
+                    </div>
+                  )}
+                  {businesses.some((b) => b.external) && (
+                    <div className="flex items-center">
+                      <Globe size={14} className="text-gray-500 mr-2" />
+                      <span>Google Places results</span>
                     </div>
                   )}
                 </div>
-
-                {/* Google Places Results */}
-                {showPlacesResults &&
-                  businesses.some((b) => b.source === 'places') && (
-                    <div className="mt-10">
-                      <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
-                        <Globe size={18} className="mr-2 text-indigo-600" />
-                        Google Places Results
-                      </h3>
-                      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {businesses
-                          .filter((business) => business.source === 'places')
-                          .map((business) => (
-                            <BusinessCard
-                              key={business.placeId || business.id}
-                              business={business}
-                              isExternal={true}
-                            />
-                          ))}
-                      </div>
-                    </div>
-                  )}
               </div>
             ) : (
               <div className="bg-gray-50 rounded-xl p-8 text-center">

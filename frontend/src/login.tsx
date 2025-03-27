@@ -1,9 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import axios from 'axios';
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Header } from './components/header';
 import { cn } from './lib/utils';
 import {
@@ -14,9 +12,7 @@ import {
   LogIn,
   ArrowRight,
 } from 'lucide-react';
-import api from './services/api';
-import { useAuth } from './contexts/useAuth';
-import { jwtDecode } from 'jwt-decode';
+import { useLogin } from './hooks/useAuth';
 
 const loginSchema = z.object({
   businessName: z
@@ -27,51 +23,21 @@ const loginSchema = z.object({
     .min(6, { message: 'Password must be at least 6 characters' }),
 });
 
-function Login() {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const { updateAuthState } = useAuth();
+type LoginFormData = z.infer<typeof loginSchema>;
 
+function Login() {
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
-  const handleLogin = async (data: z.infer<typeof loginSchema>) => {
-    setIsLoading(true);
-    setLoginError(null);
+  const login = useLogin();
 
-    try {
-      const response = await api.post('/businesses/login', data);
-      if (response.data.token) {
-        const token = response.data.token;
-        localStorage.setItem('token', token);
-
-        // IMPORTANT: Update auth state before navigation
-        try {
-          const decoded = jwtDecode<{ id: number; name: string }>(token);
-          updateAuthState(decoded.id, decoded.name);
-        } catch (decodeError) {
-          console.error('Failed to decode token:', decodeError);
-        }
-
-        // Now navigate after auth state has been updated
-        navigate('/');
-      }
-    } catch (error: unknown) {
-      console.error(error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        setLoginError('Invalid business name or password');
-      } else {
-        setLoginError('An error occurred during login. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
+  const handleLogin = async (data: LoginFormData) => {
+    login.mutate(data);
   };
 
   return (
@@ -81,7 +47,6 @@ function Login() {
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            {/* Header */}
             <div className="bg-gradient-to-r from-indigo-700 to-indigo-900 px-6 py-8 text-white text-center">
               <h2 className="text-2xl md:text-3xl font-bold mb-2">
                 Welcome Back
@@ -92,10 +57,15 @@ function Login() {
             {/* Form Section */}
             <div className="p-6 md:p-8">
               {/* Error Alert */}
-              {loginError && (
+              {login.error && (
                 <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
                   <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-                  <span>{loginError}</span>
+                  <span>
+                    {login.error.message ===
+                    'Request failed with status code 401'
+                      ? 'Invalid business name or password'
+                      : 'An error occurred during login. Please try again.'}
+                  </span>
                 </div>
               )}
 
@@ -116,7 +86,7 @@ function Login() {
                       type="text"
                       placeholder="Enter your business name"
                       {...register('businessName')}
-                      disabled={isLoading}
+                      disabled={login.isPending}
                       className={cn(
                         'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2 transition-colors',
                         errors.businessName
@@ -155,7 +125,7 @@ function Login() {
                       type="password"
                       placeholder="Enter your password"
                       {...register('password')}
-                      disabled={isLoading}
+                      disabled={login.isPending}
                       className={cn(
                         'pl-10 pr-4 py-3 bg-gray-50 border rounded-lg w-full focus:outline-none focus:ring-2 transition-colors',
                         errors.password
@@ -174,14 +144,14 @@ function Login() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={login.isPending}
                   className={cn(
                     'w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium transition-all',
-                    isLoading
+                    login.isPending
                       ? 'bg-indigo-400 cursor-not-allowed'
                       : 'hover:bg-indigo-700 transform hover:scale-[1.02]'
                   )}>
-                  {isLoading ? (
+                  {login.isPending ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
                       <span>Signing in...</span>

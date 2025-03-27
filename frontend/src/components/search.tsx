@@ -1,93 +1,121 @@
-import { Search, Loader2, X } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
-import { Business } from '@/Home';
+import { Search, Loader2, X, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import api from '@/services/api';
+import { useCategories } from '@/hooks/useCategories';
+import { useBusinessSearch } from '@/hooks/useBusinesses';
+import { Business } from '@/lib/types';
 
 interface SearchProps {
-  onSearchResults: (results: Business[]) => void;
+  onSearchResults: (
+    results: Business[],
+    meta?: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }
+  ) => void;
   className?: string;
-}
-
-interface Category {
-  id: number;
-  name: string;
+  initialSearchTerm?: string;
+  initialCategory?: string;
+  initialPage?: number;
+  initialLimit?: number;
 }
 
 const SearchServices: React.FC<SearchProps> = ({
   onSearchResults,
   className,
+  initialSearchTerm = '',
+  initialCategory = '',
+  initialPage = 1,
+  initialLimit = 9,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [category, setCategory] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [categoriesError, setCategoriesError] = useState(false);
-  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [category, setCategory] = useState(initialCategory);
+  const [searchParams, setSearchParams] = useState<{
+    searchTerm?: string;
+    category?: string;
+    page?: number;
+    limit?: number;
+  }>(
+    // Only set initial params if they have values
+    {
+      ...(initialSearchTerm ? { searchTerm: initialSearchTerm } : {}),
+      ...(initialCategory ? { category: initialCategory } : {}),
+      page: initialPage,
+      limit: initialLimit,
+    }
+  );
+
+  // Track if this is the initial load
+  const isInitialMount = useRef(true);
+  // Track if we've sent results to the parent
+  const resultsSent = useRef(false);
+
+  const {
+    data: results,
+    isLoading,
+    error,
+    isError,
+    isFetched,
+  } = useBusinessSearch(searchParams);
+
+  const {
+    data: categoriesData = [],
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
 
   useEffect(() => {
-    setCategoriesLoading(true);
-    setCategoriesError(false);
+    // Send search results to parent component when results are available
+    if (results) {
+      // Avoid duplicate sends of the same results
+      const resultsFingerprint = JSON.stringify(results.data.map((b) => b.id));
 
-    api
-      .get('/categories')
-      .then((response) => {
-        setCategories(response.data);
-        setCategoriesError(false);
-      })
-      .catch((error) => {
-        console.error('Error fetching categories:', error);
-        setCategoriesError(true);
-      })
-      .finally(() => {
-        setCategoriesLoading(false);
-      });
-  }, []);
+      // Only send results if:
+      // 1. We have results AND
+      // 2. Either this isn't the initial mount OR we have initial search params
+      // 3. And we haven't sent these exact results before
+      if (!isInitialMount.current || initialSearchTerm || initialCategory) {
+        console.log('Sending search results to parent');
+        onSearchResults(results.data, results.meta);
+        resultsSent.current = true;
+      }
+    }
+
+    // After first render, mark initial mount as completed
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    }
+  }, [results, onSearchResults, initialSearchTerm, initialCategory]);
 
   const clearSearch = () => {
     setSearchTerm('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSearch();
-  };
 
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-  };
+    // Reset the resultsSent flag when starting a new search
+    resultsSent.current = false;
 
-  const handleSearch = async () => {
-    setIsLoading(true);
-    setError('');
+    // Build the search parameters
+    const params: {
+      searchTerm?: string;
+      category?: string;
+      page: number;
+      limit: number;
+    } = {
+      page: 1, // Reset to page 1 on new search
+      limit: searchParams.limit || initialLimit,
+    };
 
-    try {
-      // console.log('Searching with term:', searchTerm);
+    if (searchTerm) params.searchTerm = searchTerm;
+    if (category) params.category = category;
 
-      const params: Record<string, string> = {};
-      if (searchTerm) params.searchTerm = searchTerm;
-      if (category) params.category = category;
-
-      // console.log('Search params:', params);
-
-      const response = await api.get('/businesses/search', { params });
-
-      // console.log('Search results:', response.data);
-
-      if (Array.isArray(response.data) && response.data.length > 0) {
-        onSearchResults(response.data);
-      } else {
-        console.log('No results found');
-        onSearchResults([]);
-        setError('No businesses found matching your criteria.');
-      }
-    } catch (err) {
-      console.error('Search error:', err);
-      setError('An error occurred while searching. Please try again.');
-    } finally {
-      setIsLoading(false);
+    // Only update search params if they've actually changed
+    if (JSON.stringify(params) !== JSON.stringify(searchParams)) {
+      setSearchParams(params);
     }
   };
 
@@ -105,7 +133,7 @@ const SearchServices: React.FC<SearchProps> = ({
             type="text"
             placeholder="Search for services..."
             value={searchTerm}
-            onChange={handleSearchInputChange}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className={cn(
               'w-full pl-11 pr-10 py-3 bg-white rounded-xl border border-gray-300',
               'text-gray-900 placeholder-gray-400',
@@ -138,7 +166,7 @@ const SearchServices: React.FC<SearchProps> = ({
               categoriesError && 'border-red-300'
             )}>
             <option value="">All Categories</option>
-            {categories.map((cat) => (
+            {categoriesData.map((cat) => (
               <option key={cat.id} value={String(cat.id)}>
                 {cat.name}
               </option>
@@ -185,7 +213,30 @@ const SearchServices: React.FC<SearchProps> = ({
           </span>
         </button>
       </div>
-      {error && <div className="text-red-600 mt-2 text-sm">{error}</div>}
+
+      {isError && (
+        <div className="flex items-center gap-2 text-red-600 mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+          <AlertCircle size={16} />
+          <div>
+            <p className="font-medium">Search error</p>
+            <p className="text-sm text-red-500">
+              {error instanceof Error
+                ? error.message
+                : 'An error occurred while searching. Please try again.'}
+            </p>
+            {import.meta.env.DEV && error instanceof Error && error.stack && (
+              <details className="mt-1">
+                <summary className="text-xs cursor-pointer hover:underline">
+                  Technical details
+                </summary>
+                <pre className="text-xs mt-1 p-2 bg-red-100 rounded overflow-auto max-h-[150px]">
+                  {error.stack}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
     </form>
   );
 };

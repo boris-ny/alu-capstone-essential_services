@@ -24,11 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import api from './services/api';
 import ProfileField from './components/profileField';
-
-interface Category {
-  id: number;
-  name: string;
-}
+import { Category } from './lib/types';
 
 // Create schema for business profile update
 const profileSchema = z.object({

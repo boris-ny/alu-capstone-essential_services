@@ -26,7 +26,7 @@ export const importBusinessesFromPlaces = async (req: Request, res: Response) =>
     // Call Google Places API
     const response = await axios.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', {
       params: {
-        location, // Format: "latitude,longitude"
+        location,
         radius: radius || 5000,
         type: type || 'establishment',
         keyword: keyword || '',
