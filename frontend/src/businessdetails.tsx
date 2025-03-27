@@ -2,7 +2,6 @@ import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useState, useEffect } from 'react';
 import { Header } from '@/components/header';
-import { Business } from '@/Home';
 import LocationPicker from './components/LocationPicker';
 import {
   Drawer,
@@ -27,6 +26,7 @@ import {
 import { cn, formatDate } from '@/lib/utils';
 import api from '@/services/api';
 import FeedbackSection from './components/feedback';
+import { Business } from './lib/types';
 
 const BusinessDetails = () => {
   const { id } = useParams();
