@@ -38,6 +38,10 @@ export const getBusinessById = async (req: Request, res: Response) => {
   try {
     const business = await prisma.business.findUnique({
       where: { id: parseInt(req.params.id) },
+      include: {
+        category: true, // Include the category relationship
+        feedback: true, // Optionally include feedback if needed for display
+      }
     });
     if (business) {
       res.json(business);

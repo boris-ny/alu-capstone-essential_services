@@ -62,19 +62,29 @@ const BusinessDetails = () => {
   useEffect(() => {
     const fetchBusinessDetails = async () => {
       try {
+        console.log('Fetching business with ID:', id);
         // Check if this is a Google Place ID
         if (id?.startsWith('place_')) {
           const placeId = id.replace('place_', '');
+          console.log('Fetching place with ID:', placeId);
           const response = await api.get(`/places/${placeId}`);
+          console.log('Place API response:', response.data);
           setBusiness(response.data);
         } else if (id) {
+          console.log('Fetching business with ID:', id);
           const response = await api.get(`/businesses/${id}`);
+          console.log('Business API response:', response.data);
           setBusiness(response.data);
         } else {
           setError('Invalid ID provided');
         }
-      } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
         console.error('Error fetching business details:', error);
+        if (error.response) {
+          console.error('API error response:', error.response.data);
+          console.error('API error status:', error.response.status);
+        }
         setError('Failed to load business details');
       } finally {
         setLoading(false);

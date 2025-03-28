@@ -20,7 +20,10 @@ const App: React.FC = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/search-results" element={<SearchResults />} />
+
+          {/* Unified business details route that handles both normal IDs and place IDs */}
           <Route path="/business/:id" element={<BusinessDetails />} />
+
           {/* Add the profile route with protection */}
           <Route
             path="/profile"

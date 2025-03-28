@@ -25,7 +25,7 @@ export const InfoBusinessCard = ({
   // Determine link destination based on source
   const linkTo =
     business.external && business.placeId
-      ? `/places/${business.placeId}` // External place details
+      ? `/business/place_${business.placeId}` // External place details - match the expected format in BusinessDetails
       : `/business/${business.id}`; // Local business details
 
   return (
