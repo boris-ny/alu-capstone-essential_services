@@ -98,17 +98,21 @@ const SearchServices: React.FC<SearchProps> = ({
     };
   }, [searchTerm, category]); // Re-run when search term or category changes
 
+  // Add a ref to track the previous results to avoid duplicate notifications
+  const prevResultsRef = useRef<string>('');
+
   useEffect(() => {
-    // Send search results to parent component when results are available
-    if (results) {
+    // Only send results if they've actually changed
+    const currentResultsKey = results ? JSON.stringify(results.data) : '';
+
+    if (results && currentResultsKey !== prevResultsRef.current) {
       // Only send results if:
       // 1. We have results AND
       // 2. Either this isn't the initial mount OR we have initial search params
-      // 3. And we haven't sent these exact results before
       if (!isInitialMount.current || initialSearchTerm || initialCategory) {
-        console.log('Sending search results to parent');
         onSearchResults(results.data, results.meta, searchTerm, category);
-        resultsSent.current = true;
+        // Update the previous results reference
+        prevResultsRef.current = currentResultsKey;
       }
     }
 

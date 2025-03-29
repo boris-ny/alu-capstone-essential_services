@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from './api';
 import axios from 'axios';
-import { Business, Place } from '@/lib/types';
+import { Business } from '@/lib/types';
 
 // Utility function to debounce API calls
 const debounce = <T extends (...args: any[]) => Promise<any>>(
@@ -98,7 +99,6 @@ const _searchBusinessesInKigali = async (textQuery: string): Promise<Business[]>
 
     if (!import.meta.env.VITE_GOOGLE_PLACES_API_KEY) {
       console.warn('Missing API key for Places API. Check your environment variables.');
-      // Instead of silently failing, throw a more descriptive error
       throw new Error('Google Places API key is missing. This might impact search results.');
     }
 
@@ -112,14 +112,12 @@ const _searchBusinessesInKigali = async (textQuery: string): Promise<Business[]>
         const cached = JSON.parse(cachedResults);
         const cacheTime = new Date(cached.timestamp);
         const now = new Date();
-        // If cache is less than 5 minutes old, use it
         if ((now.getTime() - cacheTime.getTime()) < 5 * 60 * 1000) {
           console.log('Using cached Places API results');
           return cached.data;
         }
       } catch (cacheError) {
         console.warn('Cache parsing error, will fetch fresh data:', cacheError);
-        // Clear invalid cache entry
         sessionStorage.removeItem(cacheKey);
       }
     }
@@ -129,14 +127,14 @@ const _searchBusinessesInKigali = async (textQuery: string): Promise<Business[]>
       setTimeout(() => reject(new Error('Google Places API request timed out')), 8000);
     });
 
-    // Actual API request
+    // Actual API request with updated parameters to fetch up to 30 results
     const requestPromise = axios.post(
       'https://places.googleapis.com/v1/places:searchText',
       {
         textQuery: textQuery,
         locationRestriction: kigaliCoordinates,
-        pageSize: "10", // Reduced to 10 to minimize API usage
-        maxResultCount: "10"
+        pageSize: "30",       // Request up to 30 results
+        maxResultCount: "30"  // Request up to 30 results
       },
       {
         headers: {
@@ -157,22 +155,22 @@ const _searchBusinessesInKigali = async (textQuery: string): Promise<Business[]>
       return [];
     }
 
-    // Improved mapping with better defaults and structure
-    const businesses: (Business & { external?: boolean })[] = response.data.places.map((place: Place) => {
+    // Map the API response to our Business format
+    const mappedBusinesses: (Business & { external?: boolean })[] = response.data.places.map((place: any) => {
       // Extract primary type as category name with formatting
       const categoryName = place.types?.[0]
-        ? place.types[0].replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+        ? place.types[0].replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
         : 'Uncategorized';
 
       // Generate a unique ID that won't conflict with database IDs
       const uniqueId = `ext-${Date.now()}-${Math.floor(Math.random() * 1000)}`.slice(-12);
 
       return {
-        id: parseInt(uniqueId), // Use the unique ID as numeric ID
-        placeId: place.id || uniqueId, // Store the original Google Place ID
+        id: parseInt(uniqueId),
+        placeId: place.id || uniqueId,
         businessName: place.displayName?.text || 'Unnamed Business',
         description: place.formattedAddress || 'Business in Kigali',
-        categoryId: 1, // Default category ID
+        categoryId: 1,
         category: {
           id: 1,
           name: categoryName
@@ -182,29 +180,31 @@ const _searchBusinessesInKigali = async (textQuery: string): Promise<Business[]>
         website: place.websiteUri || '',
         openingHours: '',
         closingHours: '',
-        latitude: place.location?.latitude || -1.9441, // Default to Kigali center if missing
+        latitude: place.location?.latitude || -1.9441,
         longitude: place.location?.longitude || 30.0619,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         reviews: false,
         regularHours: false,
         priceLevel: place.priceLevel || '',
-        external: true // Flag to identify as external source
+        external: true
       };
     });
+
+    // Ensure we return only the first 30 results
+    const finalBusinesses = mappedBusinesses.slice(0, 30);
 
     // Cache the results
     try {
       sessionStorage.setItem(cacheKey, JSON.stringify({
-        data: businesses,
+        data: finalBusinesses,
         timestamp: new Date().toISOString()
       }));
     } catch (storageError) {
       console.warn('Failed to cache search results:', storageError);
-      // Continue execution even if caching fails
     }
 
-    return businesses;
+    return finalBusinesses;
   } catch (error) {
     console.error('Error fetching places from Google API:', error);
 

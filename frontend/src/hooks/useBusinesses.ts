@@ -86,7 +86,6 @@ export function useBusinessSearch(params: {
       const localResults = await searchBusinesses(params);
 
       // Fetch external results if a searchTerm is provided
-      // Since Places API doesn't support pagination, we'll fetch all and then manually paginate
       const externalResults = params.searchTerm
         ? await searchBusinessesInKigali(params.searchTerm)
         : [];
@@ -94,7 +93,6 @@ export function useBusinessSearch(params: {
       // Calculate total items and pages (local + external)
       const totalItems = localResults.meta.total + externalResults.length;
       const totalPages = Math.ceil(totalItems / limit);
-
 
       const combinedData = [...localResults.data, ...externalResults];
 
@@ -109,7 +107,9 @@ export function useBusinessSearch(params: {
         }
       };
     },
-    enabled: !!(params.searchTerm || params.category), // Only run if at least one param is provided
+    enabled: !!(params.searchTerm || params.category),
+    placeholderData: (previousData) => previousData, // <-- This keeps previous data visible during page transitions
+    staleTime: 30000, // 30 seconds - keeps data fresh for a reasonable time
   });
 }
 
