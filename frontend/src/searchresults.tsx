@@ -1,213 +1,203 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/header';
 import SearchServices from '@/components/search';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   MapPin,
   Filter,
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Business } from './lib/types';
 import { InfoBusinessCard } from './components/infoBusinessCard';
+import { useBusinessSearch } from './hooks/useBusinesses';
 
 const SearchResults = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchResults, setSearchResults] = useState<Business[]>(
-    location.state?.results || []
-  );
+
+  // Extract initial search parameters
+  const initialSearchTerm = location.state?.searchTerm || '';
+  const initialCategory = location.state?.category || '';
+  const initialPage = location.state?.meta?.page || 1;
+  const initialLimit = location.state?.meta?.limit || 9;
+
+  // UI state management
   const [filteredResults, setFilteredResults] = useState<Business[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [sortOption, setSortOption] = useState('name');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(9);
-  const isPerformingSearch = useRef(false);
-  const [searchKey, setSearchKey] = useState(0);
-  const [currentSearchPage, setCurrentSearchPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [itemsPerPage, setItemsPerPage] = useState(initialLimit);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchParams, setSearchParams] = useState({
+    searchTerm: initialSearchTerm,
+    category: initialCategory,
+    page: initialPage,
+    limit: initialLimit,
+  });
 
-  // Extract search parameters from location state or search query
-  const initialSearchTerm = location.state?.searchTerm || '';
-  const initialCategory = location.state?.category || '';
+  // Use the hook to get combined results
+  const {
+    data: searchResults,
+    isLoading: isLoadingResults,
+    error: searchError,
+  } = useBusinessSearch(searchParams);
 
+  // Track unique categories across all results
   const uniqueCategories = Array.from(
     new Set(
-      searchResults
-        .filter((business) => business.category?.name)
-        .map((business) => business.category?.name)
+      searchResults?.data
+        ?.filter((business) => business.category?.name)
+        .map((business) => business.category?.name) || []
     )
   );
 
+  // Apply filtering and sorting to results
   useEffect(() => {
-    let sorted = [...searchResults];
+    if (!searchResults?.data) return;
+
+    let filtered = [...searchResults.data];
 
     // Apply category filter
     if (categoryFilter !== 'all') {
-      sorted = sorted.filter(
+      filtered = filtered.filter(
         (business) => business.category?.name === categoryFilter
       );
     }
 
     // Apply sorting
     if (sortOption === 'name') {
-      sorted.sort((a, b) => a.businessName.localeCompare(b.businessName));
+      filtered.sort((a, b) => a.businessName.localeCompare(b.businessName));
     } else if (sortOption === 'category') {
-      sorted.sort((a, b) =>
+      filtered.sort((a, b) =>
         (a.category?.name || '').localeCompare(b.category?.name || '')
       );
     } else if (sortOption === 'recent') {
-      sorted.sort(
+      filtered.sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     }
 
-    // Calculate pagination values
-    const calculatedTotalItems = sorted.length;
-    const calculatedTotalPages = Math.max(
-      1,
-      Math.ceil(calculatedTotalItems / itemsPerPage)
-    );
+    setFilteredResults(filtered);
+  }, [searchResults?.data, categoryFilter, sortOption]);
 
-    console.log('Pagination debug:', {
-      filteredResults: sorted.length,
-      itemsPerPage,
-      calculatedTotalPages,
-      currentPage,
-    });
+  // Handle new search from search component
+  const handleNewSearch = useCallback(
+    (
+      newResults: Business[],
+      meta?: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      },
+      searchTerm?: string, // Add parameters to receive the new search values
+      category?: string
+    ) => {
+      setIsSearching(true);
 
-    // Update pagination metadata
-    setTotalItems(calculatedTotalItems);
-    setTotalPages(calculatedTotalPages);
-
-    // Make sure currentPage is valid for the new total pages
-    if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) {
-      setCurrentPage(1);
-    }
-
-    // Paginate the results
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setFilteredResults(sorted.slice(startIndex, endIndex));
-  }, [searchResults, sortOption, categoryFilter, currentPage, itemsPerPage]);
-
-  const handleNewSearch = (
-    newResults: Business[],
-    meta?: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    }
-  ) => {
-    setIsLoading(true);
-    isPerformingSearch.current = true;
-
-    try {
-      // Update state with new results immediately
-      setSearchResults(newResults);
-
-      // Reset to first page when performing a new search
+      // Reset filters and pagination
+      setCategoryFilter('all');
+      setSortOption('name');
       setCurrentPage(1);
 
-      // Calculate new pagination even if meta is not provided
-      const calculatedTotalPages = Math.max(
-        1,
-        Math.ceil(newResults.length / (meta?.limit || itemsPerPage))
-      );
+      // Use the new search terms instead of initial values
+      const updatedSearchParams = {
+        searchTerm: searchTerm || '',
+        category: category || '',
+        page: 1,
+        limit: meta?.limit || initialLimit,
+      };
 
-      // Set pagination metadata if available, otherwise calculate
-      if (meta) {
-        console.log('Using provided meta:', meta);
-        setTotalPages(meta.totalPages);
-        setTotalItems(meta.total);
-        setItemsPerPage(meta.limit);
-      } else {
-        console.log('Calculating pagination:', {
-          total: newResults.length,
-          totalPages: calculatedTotalPages,
-        });
-        setTotalItems(newResults.length);
-        setTotalPages(calculatedTotalPages);
-      }
+      setSearchParams(updatedSearchParams);
 
-      // Only update navigation state if we actually have results
-      // and they're different from what we already have
-      if (newResults.length > 0) {
-        navigate('/search-results', {
-          state: {
-            results: newResults,
-            searchTerm: initialSearchTerm,
-            category: initialCategory,
-            meta,
-          },
-          replace: true, // Replace current history entry instead of adding a new one
-        });
-      }
-    } finally {
-      setIsLoading(false);
-      isPerformingSearch.current = false;
-    }
-  };
+      // Update URL state
+      navigate('/search-results', {
+        state: {
+          results: newResults,
+          searchTerm: searchTerm || '',
+          category: category || '',
+          meta,
+        },
+        replace: true,
+      });
 
-  const handlePageChange = (newPage: number) => {
-    // Ensure page is within bounds
-    if (newPage < 1 || newPage > totalPages) return;
+      setIsSearching(false);
+    },
+    [initialLimit, navigate]
+  );
 
-    // If we have server-side pagination
-    if (location.state?.meta && initialSearchTerm) {
-      // Re-use the search component with new page parameter
-      setIsLoading(true);
+  // Handle page changes for pagination
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      if (
+        !searchResults?.meta ||
+        newPage < 1 ||
+        newPage > searchResults.meta.totalPages
+      )
+        return;
 
-      // Update the search component with new page number
-      // This forces the search component to re-render with new initialPage
-      setSearchKey((prevKey) => prevKey + 1);
-      setCurrentSearchPage(newPage);
-    } else {
-      // Client-side pagination
       setCurrentPage(newPage);
-    }
 
-    // Scroll to top of results
-    window.scrollTo({
-      top: document.getElementById('results-section')?.offsetTop || 0,
-      behavior: 'smooth',
-    });
-  };
+      // Update search parameters with new page
+      setSearchParams((prev) => ({
+        ...prev,
+        page: newPage,
+      }));
+
+      // Scroll back to top of results for better UX
+      window.scrollTo({
+        top: document.getElementById('results-section')?.offsetTop || 0,
+        behavior: 'smooth',
+      });
+    },
+    [searchResults?.meta]
+  );
+
+  // Calculate if we're in a loading state
+  const isLoading = isLoadingResults || isSearching;
+
+  // Calculate if we have any results to show
+  const hasResults = filteredResults.length > 0;
+
+  // Calculate if we have any errors to show
+  const hasError = !!searchError;
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50">
       <Header />
+
+      {/* Search Bar Section */}
       <div className="bg-gradient-to-r from-indigo-700 to-indigo-900 py-6 px-4">
         <div className="container mx-auto max-w-6xl">
           <SearchServices
-            key={searchKey} // Force re-render when key changes
-            onSearchResults={(results, meta) => handleNewSearch(results, meta)}
+            onSearchResults={handleNewSearch}
             initialSearchTerm={initialSearchTerm}
             initialCategory={initialCategory}
-            initialPage={currentSearchPage}
+            initialPage={currentPage}
             initialLimit={itemsPerPage}
             className="bg-white/20 backdrop-blur-sm p-4 rounded-xl shadow-lg"
           />
         </div>
       </div>
 
+      {/* Results Section */}
       <div
         id="results-section"
         className="container mx-auto max-w-6xl px-4 py-8">
+        {/* Results Header */}
         <div className="bg-white rounded-2xl shadow-md p-5 mb-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
                 Search Results
                 <span className="text-lg md:text-xl font-medium text-gray-500 ml-2">
-                  ({totalItems})
+                  ({searchResults?.meta?.total || 0})
                 </span>
               </h1>
               {categoryFilter !== 'all' && (
@@ -259,8 +249,13 @@ const SearchResults = () => {
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1); // Reset to first page when changing items per page
+                  const newLimit = Number(e.target.value);
+                  setItemsPerPage(newLimit);
+                  setSearchParams((prev) => ({
+                    ...prev,
+                    limit: newLimit,
+                    page: 1, // Reset to first page when changing items per page
+                  }));
                 }}
                 className="px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto">
                 <option value="9">9 per page</option>
@@ -289,7 +284,7 @@ const SearchResults = () => {
               </div>
             ))}
           </div>
-        ) : filteredResults.length > 0 ? (
+        ) : hasResults ? (
           <>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {filteredResults.map((business) => (
@@ -298,7 +293,7 @@ const SearchResults = () => {
             </div>
 
             {/* Pagination Controls */}
-            {totalPages > 1 && (
+            {searchResults?.meta && searchResults.meta.totalPages > 1 && (
               <div className="mt-8 flex justify-center">
                 <div className="flex items-center gap-2">
                   <button
@@ -315,19 +310,51 @@ const SearchResults = () => {
 
                   {/* Page Numbers */}
                   <div className="flex gap-1">
-                    {[...Array(totalPages)].map((_, index) => {
-                      const pageNumber = index + 1;
+                    {[...Array(searchResults.meta.totalPages)].map(
+                      (_, index) => {
+                        const pageNumber = index + 1;
 
-                      // Show ellipsis for large page ranges
-                      if (totalPages > 7) {
-                        // Always show first page, current page, and last page
-                        // For others, show ellipsis if they're far from current
-                        if (
-                          pageNumber === 1 ||
-                          pageNumber === totalPages ||
-                          (pageNumber >= currentPage - 1 &&
-                            pageNumber <= currentPage + 1)
-                        ) {
+                        // Show ellipsis for large page ranges
+                        if (searchResults.meta.totalPages > 7) {
+                          // Always show first page, current page, and last page
+                          // For others, show ellipsis if they're far from current
+                          if (
+                            pageNumber === 1 ||
+                            pageNumber === searchResults.meta.totalPages ||
+                            (pageNumber >= currentPage - 1 &&
+                              pageNumber <= currentPage + 1)
+                          ) {
+                            return (
+                              <button
+                                key={pageNumber}
+                                onClick={() => handlePageChange(pageNumber)}
+                                className={cn(
+                                  'w-10 h-10 rounded-md border',
+                                  pageNumber === currentPage
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                )}>
+                                {pageNumber}
+                              </button>
+                            );
+                          } else if (
+                            (pageNumber === currentPage - 2 &&
+                              currentPage > 3) ||
+                            (pageNumber === currentPage + 2 &&
+                              currentPage < searchResults.meta.totalPages - 2)
+                          ) {
+                            return (
+                              <span
+                                key={pageNumber}
+                                className="text-gray-500 self-center">
+                                ...
+                              </span>
+                            );
+                          } else {
+                            return null;
+                          }
+                        } else {
+                          // If total pages <= 7, show all page numbers
                           return (
                             <button
                               key={pageNumber}
@@ -341,46 +368,17 @@ const SearchResults = () => {
                               {pageNumber}
                             </button>
                           );
-                        } else if (
-                          (pageNumber === currentPage - 2 && currentPage > 3) ||
-                          (pageNumber === currentPage + 2 &&
-                            currentPage < totalPages - 2)
-                        ) {
-                          return (
-                            <span
-                              key={pageNumber}
-                              className="text-gray-500 self-center">
-                              ...
-                            </span>
-                          );
-                        } else {
-                          return null;
                         }
-                      } else {
-                        // If total pages <= 7, show all page numbers
-                        return (
-                          <button
-                            key={pageNumber}
-                            onClick={() => handlePageChange(pageNumber)}
-                            className={cn(
-                              'w-10 h-10 rounded-md border',
-                              pageNumber === currentPage
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                            )}>
-                            {pageNumber}
-                          </button>
-                        );
                       }
-                    })}
+                    )}
                   </div>
 
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
+                    disabled={currentPage === searchResults.meta.totalPages}
                     className={cn(
                       'p-2 rounded-md border border-gray-300',
-                      currentPage === totalPages
+                      currentPage === searchResults.meta.totalPages
                         ? 'text-gray-400 cursor-not-allowed'
                         : 'text-gray-700 hover:bg-gray-50'
                     )}>
@@ -392,6 +390,27 @@ const SearchResults = () => {
           </>
         ) : (
           <EmptyState />
+        )}
+
+        {/* Error display */}
+        {hasError && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-medium text-red-800">
+                  There was an error with your search
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>
+                    {searchError instanceof Error
+                      ? searchError.message
+                      : 'An unknown error occurred'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

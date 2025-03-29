@@ -13,7 +13,9 @@ interface SearchProps {
       page: number;
       limit: number;
       totalPages: number;
-    }
+    },
+    searchTerm?: string,
+    category?: string
   ) => void;
   className?: string;
   initialSearchTerm?: string;
@@ -51,6 +53,8 @@ const SearchServices: React.FC<SearchProps> = ({
   const isInitialMount = useRef(true);
   // Track if we've sent results to the parent
   const resultsSent = useRef(false);
+  // Store timeout reference for debouncing
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     data: results,
@@ -65,19 +69,45 @@ const SearchServices: React.FC<SearchProps> = ({
     error: categoriesError,
   } = useCategories();
 
+  // Handle auto-search after typing stops for 2 seconds
+  useEffect(() => {
+    // Don't auto-search on initial render or with empty search
+    if (isInitialMount.current || searchTerm === initialSearchTerm) {
+      return;
+    }
+
+    // Clear any existing timeout
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    // Set a new timeout
+    searchDebounceRef.current = setTimeout(() => {
+      // Only submit if search term has 2+ characters or category is selected
+      if (searchTerm.trim().length >= 2 || category) {
+        console.log('Auto-submitting search after 2 seconds of inactivity');
+        handleSubmit(new Event('autosubmit') as unknown as React.FormEvent);
+      }
+    }, 2000);
+
+    // Cleanup function to clear timeout if component unmounts or searchTerm changes again
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [searchTerm, category]); // Re-run when search term or category changes
+
   useEffect(() => {
     // Send search results to parent component when results are available
     if (results) {
-      // Avoid duplicate sends of the same results
-      // const resultsFingerprint = JSON.stringify(results.data.map((b) => b.id));
-
       // Only send results if:
       // 1. We have results AND
       // 2. Either this isn't the initial mount OR we have initial search params
       // 3. And we haven't sent these exact results before
       if (!isInitialMount.current || initialSearchTerm || initialCategory) {
         console.log('Sending search results to parent');
-        onSearchResults(results.data, results.meta);
+        onSearchResults(results.data, results.meta, searchTerm, category);
         resultsSent.current = true;
       }
     }
@@ -86,14 +116,37 @@ const SearchServices: React.FC<SearchProps> = ({
     if (isInitialMount.current) {
       isInitialMount.current = false;
     }
-  }, [results, onSearchResults, initialSearchTerm, initialCategory]);
+  }, [
+    results,
+    onSearchResults,
+    initialSearchTerm,
+    initialCategory,
+    searchTerm,
+    category,
+  ]);
 
   const clearSearch = () => {
     setSearchTerm('');
+    setCategory('');
+
+    // Clear any pending debounced search
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    // Prevent default form submission behavior unless it's our synthetic event
+    if (e.type !== 'autosubmit') {
+      e.preventDefault();
+    }
+
+    // Clear any pending debounced search
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
 
     // Reset the resultsSent flag when starting a new search
     resultsSent.current = false;
@@ -109,13 +162,12 @@ const SearchServices: React.FC<SearchProps> = ({
       limit: searchParams.limit || initialLimit,
     };
 
-    if (searchTerm) params.searchTerm = searchTerm;
+    // Important: Only add params if they have values
+    if (searchTerm.trim()) params.searchTerm = searchTerm;
     if (category) params.category = category;
 
-    // Only update search params if they've actually changed
-    if (JSON.stringify(params) !== JSON.stringify(searchParams)) {
-      setSearchParams(params);
-    }
+    // Set the new search parameters
+    setSearchParams(params);
   };
 
   return (

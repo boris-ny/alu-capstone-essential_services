@@ -95,8 +95,7 @@ export function useBusinessSearch(params: {
       const totalItems = localResults.meta.total + externalResults.length;
       const totalPages = Math.ceil(totalItems / limit);
 
-      // Merge and paginate results
-      // For simplicity, we'll show all local results first, then external results
+
       const combinedData = [...localResults.data, ...externalResults];
 
       // Create a paginated response
