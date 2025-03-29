@@ -37,11 +37,7 @@ export default function Categories() {
   };
 
   // Use the enhanced useBusinessesByCategory hook with category name
-  const {
-    data: categoryBusinesses,
-    isLoading: isBusinessesLoading,
-    refetch: refetchBusinesses,
-  } = useBusinessesByCategory(
+  const { data: categoryBusinesses, isLoading } = useBusinessesByCategory(
     selectedCategory,
     selectedCategory ? getCategoryName(selectedCategory) : null,
     currentPage,
@@ -100,7 +96,7 @@ export default function Categories() {
 
     // Refetch with the new setting if in category mode
     if (selectedCategory !== null && !isSearchMode) {
-      refetchBusinesses();
+      setBusinesses([]);
     }
   };
 
@@ -218,7 +214,7 @@ export default function Categories() {
               </div>
             </div>
 
-            {isBusinessesLoading ? (
+            {isLoading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
               </div>

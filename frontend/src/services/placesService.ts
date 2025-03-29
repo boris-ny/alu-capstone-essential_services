@@ -2,19 +2,79 @@ import api from './api';
 import axios from 'axios';
 import { Business, Place } from '@/lib/types';
 
-export const getPlaceSearch = async (input: string) => {
+// Utility function to debounce API calls
+const debounce = <T extends (...args: any[]) => Promise<any>>(
+  func: T,
+  wait: number = 500
+): ((...args: Parameters<T>) => Promise<ReturnType<T>>) => {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let lastCall: number = 0;
+
+  // Track pending calls to avoid duplicate requests
+  const pendingCalls = new Map<string, Promise<ReturnType<T>>>();
+
+  return (...args: Parameters<T>): Promise<ReturnType<T>> => {
+    // Create a key based on function arguments for caching similar requests
+    const callKey = JSON.stringify(args);
+
+    // If this exact call is pending, return the pending promise
+    if (pendingCalls.has(callKey)) {
+      return pendingCalls.get(callKey)!;
+    }
+
+    const promise = new Promise<ReturnType<T>>((resolve, reject) => {
+      const now = Date.now();
+      const timeSinceLastCall = now - lastCall;
+
+      // Clear the previous timeout if it exists
+      if (timeout) clearTimeout(timeout);
+
+      if (timeSinceLastCall >= wait) {
+        // If enough time has passed since the last call, execute immediately
+        lastCall = now;
+        func(...args)
+          .then(resolve)
+          .catch(reject)
+          .finally(() => {
+            pendingCalls.delete(callKey);
+          });
+      } else {
+        // Otherwise, schedule to run after the wait period
+        timeout = setTimeout(() => {
+          lastCall = Date.now();
+          func(...args)
+            .then(resolve)
+            .catch(reject)
+            .finally(() => {
+              pendingCalls.delete(callKey);
+            });
+        }, wait - timeSinceLastCall);
+      }
+    });
+
+    // Store the promise for this call
+    pendingCalls.set(callKey, promise);
+    return promise;
+  };
+};
+
+// Original API functions
+const _getPlaceSearch = async (input: string) => {
   const response = await api.post('/places/search', {
     params: { input },
   });
   return response.data;
 };
 
-export const getPlaceDetails = async (placeId: string) => {
+const _getPlaceDetails = async (placeId: string) => {
   const response = await api.get(`/places/${placeId}`);
   return response.data;
 };
 
-export const searchBusinessesInKigali = async (textQuery: string): Promise<Business[]> => {
+export const getPlaceSearch = debounce(_getPlaceSearch, 1000);
+export const getPlaceDetails = debounce(_getPlaceDetails, 1000);
+
+const _searchBusinessesInKigali = async (textQuery: string): Promise<Business[]> => {
   try {
     // Define Kigali area boundaries for more accurate results
     const kigaliCoordinates = {
@@ -174,3 +234,6 @@ export const searchBusinessesInKigali = async (textQuery: string): Promise<Busin
       : new Error('Unknown error occurred with Places API');
   }
 };
+
+// Export the debounced version with longer wait time for the external Google API
+export const searchBusinessesInKigali = debounce(_searchBusinessesInKigali, 1500);

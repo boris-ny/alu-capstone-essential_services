@@ -29,6 +29,8 @@ const SearchResults = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(9);
   const isPerformingSearch = useRef(false);
+  const [searchKey, setSearchKey] = useState(0);
+  const [currentSearchPage, setCurrentSearchPage] = useState(1);
 
   // Extract search parameters from location state or search query
   const initialSearchTerm = location.state?.searchTerm || '';
@@ -66,9 +68,28 @@ const SearchResults = () => {
       );
     }
 
+    // Calculate pagination values
+    const calculatedTotalItems = sorted.length;
+    const calculatedTotalPages = Math.max(
+      1,
+      Math.ceil(calculatedTotalItems / itemsPerPage)
+    );
+
+    console.log('Pagination debug:', {
+      filteredResults: sorted.length,
+      itemsPerPage,
+      calculatedTotalPages,
+      currentPage,
+    });
+
     // Update pagination metadata
-    setTotalItems(sorted.length);
-    setTotalPages(Math.ceil(sorted.length / itemsPerPage));
+    setTotalItems(calculatedTotalItems);
+    setTotalPages(calculatedTotalPages);
+
+    // Make sure currentPage is valid for the new total pages
+    if (currentPage > calculatedTotalPages && calculatedTotalPages > 0) {
+      setCurrentPage(1);
+    }
 
     // Paginate the results
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -85,10 +106,7 @@ const SearchResults = () => {
       totalPages: number;
     }
   ) => {
-    // Set loading state immediately when search is initiated
     setIsLoading(true);
-
-    // Reset the isPerformingSearch at the beginning
     isPerformingSearch.current = true;
 
     try {
@@ -98,11 +116,25 @@ const SearchResults = () => {
       // Reset to first page when performing a new search
       setCurrentPage(1);
 
-      // Set pagination metadata if available
+      // Calculate new pagination even if meta is not provided
+      const calculatedTotalPages = Math.max(
+        1,
+        Math.ceil(newResults.length / (meta?.limit || itemsPerPage))
+      );
+
+      // Set pagination metadata if available, otherwise calculate
       if (meta) {
+        console.log('Using provided meta:', meta);
         setTotalPages(meta.totalPages);
         setTotalItems(meta.total);
         setItemsPerPage(meta.limit);
+      } else {
+        console.log('Calculating pagination:', {
+          total: newResults.length,
+          totalPages: calculatedTotalPages,
+        });
+        setTotalItems(newResults.length);
+        setTotalPages(calculatedTotalPages);
       }
 
       // Only update navigation state if we actually have results
@@ -119,7 +151,6 @@ const SearchResults = () => {
         });
       }
     } finally {
-      // Always update loading state regardless of success/failure
       setIsLoading(false);
       isPerformingSearch.current = false;
     }
@@ -129,8 +160,19 @@ const SearchResults = () => {
     // Ensure page is within bounds
     if (newPage < 1 || newPage > totalPages) return;
 
-    // Update the current page
-    setCurrentPage(newPage);
+    // If we have server-side pagination
+    if (location.state?.meta && initialSearchTerm) {
+      // Re-use the search component with new page parameter
+      setIsLoading(true);
+
+      // Update the search component with new page number
+      // This forces the search component to re-render with new initialPage
+      setSearchKey((prevKey) => prevKey + 1);
+      setCurrentSearchPage(newPage);
+    } else {
+      // Client-side pagination
+      setCurrentPage(newPage);
+    }
 
     // Scroll to top of results
     window.scrollTo({
@@ -145,9 +187,12 @@ const SearchResults = () => {
       <div className="bg-gradient-to-r from-indigo-700 to-indigo-900 py-6 px-4">
         <div className="container mx-auto max-w-6xl">
           <SearchServices
+            key={searchKey} // Force re-render when key changes
             onSearchResults={(results, meta) => handleNewSearch(results, meta)}
             initialSearchTerm={initialSearchTerm}
             initialCategory={initialCategory}
+            initialPage={currentSearchPage}
+            initialLimit={itemsPerPage}
             className="bg-white/20 backdrop-blur-sm p-4 rounded-xl shadow-lg"
           />
         </div>

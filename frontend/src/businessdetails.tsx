@@ -1,6 +1,7 @@
-import { useParams, Link } from 'react-router-dom';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Header } from '@/components/header';
 import LocationPicker from './components/LocationPicker';
 import {
@@ -28,20 +29,40 @@ import api from '@/services/api';
 import FeedbackSection from './components/feedback';
 import { Business } from './lib/types';
 
+// Helper function to debounce function calls
+// Define a more specific function type instead of using generic Function
+
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait = 300
+): (...args: Parameters<T>) => void {
+  let timeout: ReturnType<typeof setTimeout>;
+
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 const BusinessDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('about');
+  const [mapLoaded, setMapLoaded] = useState(false);
 
-  const getMapsUrl = (lat: number, lng: number) => {
+  const getMapsUrl = useCallback((lat: number, lng: number) => {
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  };
+  }, []);
 
-  // const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (navigator.share && business) {
       try {
         await navigator.share({
@@ -57,10 +78,21 @@ const BusinessDetails = () => {
       navigator.clipboard.writeText(window.location.href);
       alert('Link copied to clipboard!');
     }
-  };
+  }, [business]);
+
+  // Debounced navigation function to prevent multiple history API calls
+  const goBack = useCallback(
+    debounce(() => {
+      navigate(-1);
+    }, 500),
+    [navigate]
+  );
 
   useEffect(() => {
     const fetchBusinessDetails = async () => {
+      // If we already have business data, don't fetch again
+      if (business) return;
+
       try {
         console.log('Fetching business with ID:', id);
         // Check if this is a Google Place ID
@@ -78,7 +110,6 @@ const BusinessDetails = () => {
         } else {
           setError('Invalid ID provided');
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error('Error fetching business details:', error);
         if (error.response) {
@@ -92,7 +123,23 @@ const BusinessDetails = () => {
     };
 
     fetchBusinessDetails();
-  }, [id]);
+  }, [id, business]);
+
+  // Handle map loading logic
+  const handleMapDisplay = useCallback(() => {
+    if (
+      !mapLoaded &&
+      activeTab === 'location' &&
+      business?.latitude &&
+      business?.longitude
+    ) {
+      setMapLoaded(true);
+    }
+  }, [activeTab, business?.latitude, business?.longitude, mapLoaded]);
+
+  useEffect(() => {
+    handleMapDisplay();
+  }, [activeTab, handleMapDisplay]);
 
   if (loading) {
     return (
@@ -165,12 +212,15 @@ const BusinessDetails = () => {
 
       {/* Back button - Mobile only */}
       <div className="md:hidden px-4 py-3 border-b">
-        <Link
-          to="/search-results"
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            goBack();
+          }}
           className="inline-flex items-center text-indigo-600">
           <ArrowLeft className="w-4 h-4 mr-1" />
           <span>Back</span>
-        </Link>
+        </button>
       </div>
 
       {/* Hero Section */}
@@ -179,12 +229,15 @@ const BusinessDetails = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
               <div className="mb-2 flex items-center">
-                <Link
-                  to="/search-results"
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    goBack();
+                  }}
                   className="hidden md:inline-flex items-center text-indigo-200 hover:text-white mr-3">
                   <ArrowLeft className="w-4 h-4 mr-1" />
                   <span>Back</span>
-                </Link>
+                </button>
                 {business.category?.name && (
                   <span className="text-xs font-medium bg-indigo-800/50 text-indigo-100 px-3 py-1 rounded-full">
                     {business.category.name}
@@ -223,7 +276,7 @@ const BusinessDetails = () => {
         </div>
       </div>
 
-      {/* Content Section */}
+      {/* Content Section with optimized map loading*/}
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Mobile Tab Navigation - ALWAYS at the top on mobile */}
         <div className="block md:hidden mb-6">
@@ -389,7 +442,7 @@ const BusinessDetails = () => {
 
           {/* Sidebar - 2/5 columns for wider map */}
           <div className="col-span-2 space-y-6">
-            {/* Location Map */}
+            {/* Location Map - Only render when we actually have the data */}
             {business.latitude && business.longitude ? (
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">
@@ -482,12 +535,13 @@ const BusinessDetails = () => {
           </div>
         </div>
 
-        {/* Mobile Content - Show based on active tab */}
+        {/* Mobile Content - Only render the active tab to reduce API calls */}
         <div className="block md:hidden">
-          {/* Location tab content */}
-          {activeTab === 'location' && (
-            <div className="space-y-6">
-              {business.latitude && business.longitude ? (
+          {/* Location tab content - Only load map when this tab is active */}
+          {activeTab === 'location' &&
+            business.latitude &&
+            business.longitude && (
+              <div className="space-y-6">
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="text-lg font-bold text-gray-800 mb-4">
                     Location
@@ -499,7 +553,7 @@ const BusinessDetails = () => {
                     }}
                     isEditable={false}
                     variant="small"
-                    className="mb-4 h-[400px] w-full" // Good height for mobile
+                    className="mb-4 h-[400px] w-full"
                   />
 
                   {/* Mobile Get Directions */}
@@ -512,18 +566,21 @@ const BusinessDetails = () => {
                     <span>Open in Google Maps</span>
                   </a>
                 </div>
-              ) : (
-                <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h3 className="text-lg font-bold text-gray-800 mb-2">
-                    Location
-                  </h3>
-                  <p className="text-gray-500">
-                    No location information available for this business.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+
+          {/* Display message if no location data */}
+          {activeTab === 'location' &&
+            !(business.latitude && business.longitude) && (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">
+                  Location
+                </h3>
+                <p className="text-gray-500">
+                  No location information available for this business.
+                </p>
+              </div>
+            )}
 
           {/* About tab content */}
           {activeTab === 'about' && (
