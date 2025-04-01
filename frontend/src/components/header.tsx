@@ -11,13 +11,16 @@ export const Header = () => {
   const { isAuthenticated, business, logout } = useAuth();
 
   // Get initials from business name
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'N/A'; // Handle case when name is undefined
+
+    // Then do the split operation
     return name
       .split(' ')
       .map((part) => part[0])
       .join('')
       .toUpperCase()
-      .substring(0, 2);
+      .slice(0, 2);
   };
 
   // Close mobile menu when route changes

@@ -24,7 +24,8 @@ import {
 import { cn } from '@/lib/utils';
 import api from './services/api';
 import ProfileField from './components/profileField';
-import { Category } from './lib/types';
+import { Business, Category } from './lib/types';
+import FeedbackSection from './components/feedback';
 
 // Create schema for business profile update
 const profileSchema = z.object({
@@ -84,27 +85,34 @@ function BusinessProfile() {
         }
 
         // Fetch business details
-        const businessResponse = await api.get(`/businesses/${business.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const businessResponse = await api.get<Business>(
+          `/businesses/${business.id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         // Fetch categories for dropdown
         const categoriesResponse = await api.get('/categories');
 
-        setProfileData(businessResponse.data);
-        setCategories(categoriesResponse.data);
-
-        // Set form default values
-        reset({
+        const formattedData: ProfileFormData = {
           businessName: businessResponse.data.businessName,
           description: businessResponse.data.description || '',
-          categoryId: String(businessResponse.data.categoryId),
+          categoryId: String(businessResponse.data.categoryId), // Convert to string
           contactNumber: businessResponse.data.contactNumber,
           email: businessResponse.data.email || '',
           website: businessResponse.data.website || '',
           openingHours: businessResponse.data.openingHours || '',
           closingHours: businessResponse.data.closingHours || '',
-        });
+          latitude: businessResponse.data.latitude,
+          longitude: businessResponse.data.longitude,
+        };
+
+        setProfileData(formattedData);
+        setCategories(categoriesResponse.data);
+
+        // Set form default values
+        reset(formattedData);
 
         // Set location if available
         if (businessResponse.data.latitude && businessResponse.data.longitude) {
@@ -458,6 +466,28 @@ function BusinessProfile() {
           </form>
         </div>
       </div>
+
+      {/* Feedback Section */}
+      {!isLoading && business?.id && (
+        <div className="container max-w-4xl mx-auto px-4 mt-8 mb-12">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-700 to-indigo-900 px-6 py-4 text-white">
+              <h3 className="text-xl font-bold">Customer Feedback</h3>
+              <p className="text-indigo-200 text-sm">
+                Review customer feedback for your business
+              </p>
+            </div>
+            <div className="p-6">
+              <FeedbackSection
+                hideReviewButton={true}
+                businessId={business.id.toString()}
+                businessType="LOCAL_BUSINESS"
+                googleReviews={[]}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
