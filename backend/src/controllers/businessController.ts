@@ -2,8 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../utils/prisma';
-import axios from 'axios';
-import cache from '../utils/cache';
+
 
 
 const JWT_SECRET = process.env.JWT_SECRET || '';

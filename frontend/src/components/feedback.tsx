@@ -9,11 +9,14 @@ import { Feedback, PlaceReview } from '@/lib/types';
 interface FeedbackSectionProps {
   businessId: number | string;
   googleReviews?: PlaceReview[]; // Pass Google reviews from the parent component
+  businessType?: string;
+  hideReviewButton?: boolean; // New prop to conditionally show/hide the review button
 }
 
 const FeedbackSection: React.FC<FeedbackSectionProps> = ({
   businessId,
   googleReviews = [],
+  hideReviewButton = false, // Default to showing the button
 }) => {
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [avgRating, setAvgRating] = useState<number>(0);
@@ -182,11 +185,14 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({
             </div>
           )}
 
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
-            {showForm ? 'Cancel' : 'Write a Review'}
-          </button>
+          {/* Only show button if hideReviewButton is false */}
+          {!hideReviewButton && (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+              {showForm ? 'Cancel' : 'Write a Review'}
+            </button>
+          )}
         </div>
       </div>
 
